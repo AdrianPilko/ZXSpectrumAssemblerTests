@@ -7,13 +7,13 @@ start:
 	; Clear screen
 	call cls
 
-	ld a,$d6
+	ld a,$eb   ; blue and purple
 	ld ($5800),a
 	ld ($5810),a
-	ld ($5920),a
-	ld ($5a00),a
-	ld ($5a30),a
-
+	ld ($5812),a
+	ld ($5814),a
+	ld ($5814),a
+	
 	ret
 
 end start
