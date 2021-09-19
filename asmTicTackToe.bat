@@ -3,5 +3,5 @@
 del asm.tap
 del asm.sta
 
-e:\ZXSpectrum\asm\pasmo.exe -1 --tapbas asmColour.asm asm.tap
+e:\ZXSpectrum\asm\pasmo.exe -1 --tapbas asmTicTacToe.asm asm.tap
 pause
