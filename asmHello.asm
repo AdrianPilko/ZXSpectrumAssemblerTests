@@ -1,28 +1,25 @@
 org $8000
 
-; Define some ROM routines
-cls     EQU $0D6B
-opench  EQU $1601
-print   EQU $203C
+; ROM macros 
+clear_screen	equ $0d6b
+open_screen  	equ $1601
+print_text  	equ $203c
 
-; Define our string to print
-string:
-db 'Hello world!',13
+; the text to print
+hello_text:
+	db 'Hello world!',13
 
-start:
-	; Clear screen
-	call cls
-
-	; Open upper screen channel
+main:
+	; call the clear the screen ROM code
+	call clear_screen
+	; open screen channel
 	ld a,2
-	call opench
-
-	; Print string
-	ld de,string
+	call open_screen
+	; load the string into register de
+	ld de,hello_text
 	ld bc,13
-	call print
-
-	; Return to the operating system
+	; call the ROM code to print the text on screen
+	call print_text
+	; return to basic "prompt"
 	ret
-
-end start
+end main
