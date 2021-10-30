@@ -18,7 +18,7 @@ main:
 	; load the string into register de
 	ld de,hello_text
 	ld bc,13
-	; call the ROM code to print the text on screen
+	; call the ROM code to print on screen
 	call print_text
 	; return to basic "prompt"
 	ret

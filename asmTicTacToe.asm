@@ -32,8 +32,8 @@ start:
 	ld bc,strLen 	
 	call print_text
 	ld a,boardColourAttr ; load a with board colour		
-; draw tic tac toe board	
-	ld hl,screenStartHoriz_1 
+
+	ld hl,screenStartHoriz_1 ; draw noughts and crosses (tic tac toe) criss-cross board	
 	ld b,16	
 loop_1: 		
 	ld (hl),a
