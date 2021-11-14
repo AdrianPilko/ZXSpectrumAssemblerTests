@@ -21,6 +21,10 @@ _paper				equ $11
 _at					equ $16
 _bright				equ $13
 
+;current x,y position
+CurrentXPos         equ $a000
+CurrentYPos         equ $a001
+
 call start
 ret
 
@@ -59,7 +63,11 @@ loop_4:
 	ld de,32 ; can't use bc as b is the loop counter
 	add hl,de
 	djnz loop_4
-	
+
+	; initialise the current x,y to zero
+	ld a, 8
+	ld (CurrentXPos),a
+	ld (CurrentYPos),a
 	
 gameLoop:
 	call Read_Keyboard ; register A should now contain the key pressed first nibble is row, second is column
@@ -71,6 +79,14 @@ gameLoop:
 	call z, moveUp
 	cp $5A            ; 5A is row column on keyboard matrix for Z
 	call z, moveDown		
+	
+
+	; temporarily place n X or O, depending on whos go it is at the location no at
+	LD A, 88                ; Character to print
+	LD D, (CurrentYPos)       ; Y position
+	LD E, (CurrentXPos)       ; X position
+	call Print_Char         ; Print the character
+
 	jr gameLoop	
 	
 Read_Keyboard:          LD HL,Keyboard_Map      ; Point HL at the keyboard list
@@ -97,21 +113,38 @@ moveRight:
 	ld de,gameTitleStrR
 	ld bc,strLenR 	
 	call print_text
+	
+	; this currently doesn't work the character doesn't move....
+	ld a, CurrentXPos ; load from memory where x position is stored
+	add a,1			  ; increment the register a (x position = x position + 1)
+	ld (CurrentXPos), a ; store the x position back to memory
 	ret
 moveLeft:	
 	ld de,gameTitleStrL
 	ld bc,strLenL 	
 	call print_text
+	ld a, CurrentXPos ; load from memory where x position is stored
+	ld b,1
+	sbc a,b			  ; decrement the register a (x position = x position - 1)
+	ld (CurrentXPos), a ; store the x position back to memory
 	ret	
 moveUp:
 	ld de,gameTitleStrU
 	ld bc,strLenU 	
 	call print_text
+	ld a, CurrentYPos ; load from memory where y position is stored
+	ld b, 1
+	sbc a,1			  ; increment the register a (y position = y position - 1)
+	ld (CurrentYPos), a ; store the y position back to memory
 	ret
 moveDown:	
 	ld de,gameTitleStrD
 	ld bc,strLenD 	
 	call print_text
+	ld a, CurrentYPos ; load from memory where y position is stored
+	ld b,1
+	add a,b			  ; increment the register a (y position = y position + 1)
+	ld (CurrentYPos), a ; store the y position back to memory	
 	ret		
 clearKey:
 		
@@ -143,5 +176,51 @@ Keyboard_Map    defb &FE,"#","Z","X","C","V"
 				defb &DF,"P","O","I","U","Y"
 				defb &BF,"#","L","K","J","H"
 				defb &7F," ","#","M","N","B"
-	
+
+
+; CREDIT TO: 
+; http://www.breakintoprogram.co.uk/computers/zx-spectrum/assembly-language/z80-tutorials/print-in-assembly-language/2
+; Print a single character out to a screen address
+;  A: Character to print
+;  D: Character Y position
+;  E: Character X position
+;
+Print_Char:             LD HL, 0x3C00           ; Character set bitmap data in ROM
+                        LD B,0                  ; BC = character code
+                        LD C, A
+                        SLA C                   ; Multiply by 8 by shifting
+                        RL B
+                        SLA C
+                        RL B
+                        SLA C
+                        RL B
+                        ADD HL, BC              ; And add to HL to get first byte of character
+                        CALL Get_Char_Address   ; Get screen position in DE
+                        LD B,8                  ; Loop counter - 8 bytes per character
+Print_Char_L1:          LD A,(HL)               ; Get the byte from the ROM into A
+                        LD (DE),A               ; Stick A onto the screen
+                        INC HL                  ; Goto next byte of character
+                        INC D                   ; Goto next line on screen
+                        DJNZ Print_Char_L1      ; Loop around whilst it is Not Zero (NZ)
+                        RET
+ 
+; Get screen address from a character (X,Y) coordinate
+; D = Y character position (0-23)
+; E = X character position (0-31)
+; Returns screen address in DE
+;
+Get_Char_Address:       LD A,D
+                        AND %00000111
+                        RRA
+                        RRA
+                        RRA
+                        RRA
+                        OR E
+                        LD E,A
+                        LD A,D
+                        AND %00011000
+                        OR %01000000
+                        LD D,A
+                        RET   
+						
 end start
