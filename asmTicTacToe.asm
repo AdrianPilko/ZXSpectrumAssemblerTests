@@ -22,8 +22,8 @@ _at					equ $16
 _bright				equ $13
 
 ;current x,y position
-CurrentXPos         equ $a000
-CurrentYPos         equ $a001
+CurrentXPos         equ $ff08
+CurrentYPos         equ $ff09
 
 call start
 ret
@@ -65,8 +65,9 @@ loop_4:
 	djnz loop_4
 
 	; initialise the current x,y to zero
-	ld a, 8
-	ld (CurrentXPos),a
+	
+	ld a,0
+	ld (CurrentXPos),a		
 	ld (CurrentYPos),a
 	
 gameLoop:
@@ -79,8 +80,21 @@ gameLoop:
 	call z, moveUp
 	cp $5A            ; 5A is row column on keyboard matrix for Z
 	call z, moveDown		
-	
 
+	; debug
+	LD A, (CurrentXPos)                ; Character to print
+	add a,65
+	LD D, 0       ; Y position
+	LD E, 0       ; X position
+	call Print_Char         ; Print the character
+
+	; debug
+	LD A, (CurrentYPos)                ; Character to print
+	add a,65
+	LD D, 4       ; Y position
+	LD E, 4       ; X position
+	call Print_Char         ; Print the character	
+	
 	; temporarily place n X or O, depending on whos go it is at the location no at
 	LD A, 88                ; Character to print
 	LD D, (CurrentYPos)       ; Y position
@@ -115,36 +129,41 @@ moveRight:
 	call print_text
 	
 	; this currently doesn't work the character doesn't move....
-	ld a, CurrentXPos ; load from memory where x position is stored
+	ld a, (CurrentXPos) ; load from memory where x position is stored
+	cp 31  ; limit x pos to width of screen
+	jp z,skipMR
 	add a,1			  ; increment the register a (x position = x position + 1)
-	ld (CurrentXPos), a ; store the x position back to memory
+skipMR:	ld (CurrentXPos), a ; store the x position back to memory
 	ret
 moveLeft:	
 	ld de,gameTitleStrL
 	ld bc,strLenL 	
 	call print_text
-	ld a, CurrentXPos ; load from memory where x position is stored
-	ld b,1
-	sbc a,b			  ; decrement the register a (x position = x position - 1)
-	ld (CurrentXPos), a ; store the x position back to memory
+	ld a, (CurrentXPos) ; load from memory where x position is stored
+	cp 0	;limit x pos to minimum of left of screen (zero)
+	jp z, skipML
+	sub 1			  ; decrement the register a (x position = x position - 1)	
+skipML:	ld (CurrentXPos), a ; store the x position back to memory
 	ret	
 moveUp:
 	ld de,gameTitleStrU
 	ld bc,strLenU 	
 	call print_text
-	ld a, CurrentYPos ; load from memory where y position is stored
-	ld b, 1
-	sbc a,1			  ; increment the register a (y position = y position - 1)
-	ld (CurrentYPos), a ; store the y position back to memory
+	ld a, (CurrentYPos) ; load from memory where y position is stored
+	cp 0
+	jp z, skipMU
+	sub 1			  ; increment the register a (y position = y position - 1)
+skipMU: ld (CurrentYPos), a ; store the y position back to memory
 	ret
 moveDown:	
 	ld de,gameTitleStrD
 	ld bc,strLenD 	
 	call print_text
-	ld a, CurrentYPos ; load from memory where y position is stored
-	ld b,1
-	add a,b			  ; increment the register a (y position = y position + 1)
-	ld (CurrentYPos), a ; store the y position back to memory	
+	ld a, (CurrentYPos) ; load from memory where y position is stored	
+	cp 23
+	jp z,skipMD
+	add a,1			  ; increment the register a (y position = y position + 1)
+skipMD: ld (CurrentYPos), a ; store the y position back to memory	
 	ret		
 clearKey:
 		
