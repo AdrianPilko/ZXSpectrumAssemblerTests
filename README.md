@@ -1,4 +1,4 @@
-This is a few z80 assembler programs for the zx spectrum. The zx spectrum is an 8 bit machine from the early 1980s design by Sinclair in Cambtidge(Enhland) and built by Timex(in Dundee,Scotland). 
+This is a few z80 assembler programs for the zx spectrum. The zx spectrum is an 8 bit machine from the early 1980s designed by Sinclair in Cambridge(England) and built by Timex(in Dundee,Scotland). 
 
 The computer has a large following even today with a vast amount of software out there, and a large amount of new code being written by enthusiasts. At the core of the "Speccy" is the z80 CPU. The z80 is still manufactured today and is used is many embeded appications, so writing z80 assembler is still relevant and fun.
 
