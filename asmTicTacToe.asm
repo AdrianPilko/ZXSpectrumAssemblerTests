@@ -24,6 +24,9 @@ _bright				equ $13
 ;current x,y position
 CurrentXPos         equ $857e
 CurrentYPos         equ $857f
+PreviousXPos        equ $8580
+PreviousYPos        equ $8581
+wasAMoveFlag        equ $8582
 
 call start
 ret
@@ -71,6 +74,18 @@ loop_4:
 	ld (CurrentYPos),a
 	
 gameLoop:
+
+	; save the previous x y positions to memory so we can overwrite with blank after move
+	ld hl, CurrentXPos	
+	ld a, (hl)	
+	ld (PreviousXPos), a
+	ld hl, CurrentYPos	
+	ld a, (hl)	
+	ld (PreviousYPos), a
+	
+	ld a,0
+	ld (wasAMoveFlag),a
+	
 	call Read_Keyboard ; register A should now contain the key pressed first nibble is row, second is column
 	cp $50            ; 50 is row column on keyboard matrix for P
 	call z, moveRight
@@ -81,19 +96,10 @@ gameLoop:
 	cp $5A            ; 5A is row column on keyboard matrix for Z
 	call z, moveDown		
 
-	; debug
-;	LD A, (CurrentXPos)                ; Character to print
-;	add a,65
-;	LD D, 0       ; Y position
-;	LD E, 0       ; X position
-;	call Print_Char         ; Print the character
 
-	; debug
-;	LD A, (CurrentYPos)                ; Character to print
-;	add a,65
-;	LD D, 4       ; Y position
-;	LD E, 4       ; X position
-;	call Print_Char         ; Print the character	
+	ld a, (wasAMoveFlag) ; load from memory where x position is stored
+	cp 0  ; limit x pos to width of screen
+	jp z, gameLoop	; if wasAMove zero then go back to game loop 
 	
 	; temporarily place n X or O, depending on whos go it is at the location no at
 	ld a,88
@@ -101,11 +107,16 @@ gameLoop:
 	ld d, (hl)
 	ld hl, CurrentXPos
 	ld e, (hl)
-
 	call Print_Char         ; Print the character
-
-	jr gameLoop	
+	; clear the previous location
+	ld a,32
+	ld hl, PreviousYPos
+	ld d, (hl)
+	ld hl, PreviousXPos
+	ld e, (hl)
+	call Print_Char         ; Print the character
 	
+	jr gameLoop
 	
 Read_Keyboard:          LD HL,Keyboard_Map      ; Point HL at the keyboard list
                         LD D,8                  ; This is the number of ports (rows) to check
@@ -128,6 +139,8 @@ Read_Keyboard_2:        LD A,(HL)               ; We've found a key at this poin
                         RET
 
 moveRight:
+	ld a,1
+	ld (wasAMoveFlag),a
 	ld de,gameTitleStrR
 	ld bc,strLenR 	
 	call print_text
@@ -140,6 +153,8 @@ moveRight:
 skipMR:	ld (CurrentXPos), a ; store the x position back to memory
 	ret
 moveLeft:	
+	ld a,1
+	ld (wasAMoveFlag),a
 	ld de,gameTitleStrL
 	ld bc,strLenL 	
 	call print_text
@@ -150,6 +165,8 @@ moveLeft:
 skipML:	ld (CurrentXPos), a ; store the x position back to memory
 	ret	
 moveUp:
+	ld a,1
+	ld (wasAMoveFlag),a
 	ld de,gameTitleStrU
 	ld bc,strLenU 	
 	call print_text
@@ -160,6 +177,8 @@ moveUp:
 skipMU: ld (CurrentYPos), a ; store the y position back to memory
 	ret
 moveDown:	
+	ld a,1
+	ld (wasAMoveFlag),a
 	ld de,gameTitleStrD
 	ld bc,strLenD 	
 	call print_text
