@@ -22,8 +22,8 @@ _at					equ $16
 _bright				equ $13
 
 ;current x,y position
-CurrentXPos         equ $ff08
-CurrentYPos         equ $ff09
+CurrentXPos         equ $857e
+CurrentYPos         equ $857f
 
 call start
 ret
@@ -66,7 +66,7 @@ loop_4:
 
 	; initialise the current x,y to zero
 	
-	ld a,0
+	ld a,2
 	ld (CurrentXPos),a		
 	ld (CurrentYPos),a
 	
@@ -82,26 +82,30 @@ gameLoop:
 	call z, moveDown		
 
 	; debug
-	LD A, (CurrentXPos)                ; Character to print
-	add a,65
-	LD D, 0       ; Y position
-	LD E, 0       ; X position
-	call Print_Char         ; Print the character
+;	LD A, (CurrentXPos)                ; Character to print
+;	add a,65
+;	LD D, 0       ; Y position
+;	LD E, 0       ; X position
+;	call Print_Char         ; Print the character
 
 	; debug
-	LD A, (CurrentYPos)                ; Character to print
-	add a,65
-	LD D, 4       ; Y position
-	LD E, 4       ; X position
-	call Print_Char         ; Print the character	
+;	LD A, (CurrentYPos)                ; Character to print
+;	add a,65
+;	LD D, 4       ; Y position
+;	LD E, 4       ; X position
+;	call Print_Char         ; Print the character	
 	
 	; temporarily place n X or O, depending on whos go it is at the location no at
-	LD A, 88                ; Character to print
-	LD D, (CurrentYPos)       ; Y position
-	LD E, (CurrentXPos)       ; X position
+	ld a,88
+	ld hl, CurrentYPos
+	ld d, (hl)
+	ld hl, CurrentXPos
+	ld e, (hl)
+
 	call Print_Char         ; Print the character
 
 	jr gameLoop	
+	
 	
 Read_Keyboard:          LD HL,Keyboard_Map      ; Point HL at the keyboard list
                         LD D,8                  ; This is the number of ports (rows) to check
