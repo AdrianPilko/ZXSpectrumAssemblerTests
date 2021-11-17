@@ -67,12 +67,20 @@ loop_4:
 	add hl,de
 	djnz loop_4
 
-	; initialise the current x,y to zero
+	; initialise the current x,y and the last x,y = current at this point
 	
-	ld a,2
+	ld a,(boardStoreXPos+4)
 	ld (CurrentXPos),a		
+	sub 1
+	ld (PreviousXPos), a
+	ld a,(boardStoreYPos+4)
 	ld (CurrentYPos),a
-	
+	sub 1
+	ld (PreviousYPos), a
+	ld a,0
+	ld (wasAMoveFlag),a	
+	jr readKeyboard 
+
 gameLoop:
 
 	; save the previous x y positions to memory so we can overwrite with blank after move
@@ -85,7 +93,8 @@ gameLoop:
 	
 	ld a,0
 	ld (wasAMoveFlag),a
-	
+
+readKeyboard:	
 	call Read_Keyboard ; register A should now contain the key pressed first nibble is row, second is column
 	cp $50            ; 50 is row column on keyboard matrix for P
 	call z, moveRight
@@ -96,26 +105,28 @@ gameLoop:
 	cp $5A            ; 5A is row column on keyboard matrix for Z
 	call z, moveDown		
 
-
-	ld a, (wasAMoveFlag) ; load from memory where x position is stored
-	cp 0  ; limit x pos to width of screen
-	jp z, gameLoop	; if wasAMove zero then go back to game loop 
-	
 	; temporarily place n X or O, depending on whos go it is at the location no at
 	ld a,88
 	ld hl, CurrentYPos
 	ld d, (hl)
 	ld hl, CurrentXPos
 	ld e, (hl)
-	call Print_Char         ; Print the character
-	; clear the previous location
+	call Print_Char        
+
+	ld a, (wasAMoveFlag) ; load from memory where x position is stored
+	cp 0  ; check if flag was set
+	jp nz, clearPrevious	; if wasAMove zero then go back to game loop 
+	     
+	
+	jr gameLoop
+	
+clearPrevious:	; clear the previous location
 	ld a,32
 	ld hl, PreviousYPos
 	ld d, (hl)
 	ld hl, PreviousXPos
 	ld e, (hl)
-	call Print_Char         ; Print the character
-	
+	call Print_Char
 	jr gameLoop
 	
 Read_Keyboard:          LD HL,Keyboard_Map      ; Point HL at the keyboard list
@@ -194,7 +205,13 @@ drawCross:
 		ret
 drawCircle:
 		ret
-		
+
+; we store the board state in this block of memory		
+; a zero inidcates no move, 1 indicates an X, 2 is an O
+boardStore defb 	0,0,0,0,0,0,0,0,0 
+boardStoreXPos defb 	11,11,11,15,15,15,21,21,21
+boardStoreYPos defb 	6,6,6,10,10,10,15,15,15  
+										
 gameTitleStr	defb _at, 0, 0, _ink, 1, _paper, 6, _bright, 1, "      Noughts and Crosses      "
 strLen			equ $ - gameTitleStr
 
