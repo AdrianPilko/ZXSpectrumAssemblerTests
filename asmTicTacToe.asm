@@ -40,10 +40,6 @@ crossBig  defb 1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1
 naughtBig defb 0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0
 
 drawNaughOrCross			; draw naught or cross at position CurrentYPos CurrentXPos
-	ld a, (whoseMoveIsIt)
-	and 1	; compare a, if zero then draw cross, if 1 draw naught
-	jp z,drawNaught
-	
 	ld a,(CurrentYPos)
 	ld (posYTemp),a
 	ld a, (CurrentXPos)
@@ -51,14 +47,18 @@ drawNaughOrCross			; draw naught or cross at position CurrentYPos CurrentXPos
 	
 	ld a,4
 	ld (loopCounterTemp),a
-	ld (loopCounterTemp2),a		
+	ld (loopCounterTemp2),a	
+	
+	ld a, (whoseMoveIsIt)
+	and 1	; compare a, if zero then draw cross, if 1 draw naught
+	jp z,drawNaughOrCross_LoopCross
 	
 drawNaughOrCross_LoopNaught			
 	ld a, (posXTemp)     ;; current y pos in e for Print_Char
 	ld e,a
 	ld a, (posYTemp)	 ;; current y pos in d for Print_Char
 	ld d,a
-	ld a,88					;; load X character (ultimately this will come from the definition of crossBig
+	ld a,79					;; load O character (ultimately this will come from the definition of crossBig
 	call Print_Char
 	
 	ld a,(posYTemp)
@@ -87,14 +87,39 @@ drawNaughOrCross_resetYIncX
 	jp nz, drawNaughOrCross_LoopNaught
 	jp drawNaughOrCross_endFunc
 	
-drawNaught	
-	ld (loopCounterTemp),a
-	ld a, 79
-	ld hl, CurrentYPos
-	ld d, (hl)
-	ld hl, CurrentXPos
-	ld e, (hl)
-	call Print_Char     
+drawNaughOrCross_LoopCross	
+	ld a, (posXTemp)     ;; current y pos in e for Print_Char
+	ld e,a
+	ld a, (posYTemp)	 ;; current y pos in d for Print_Char
+	ld d,a
+	ld a,88					;; load X character (ultimately this will come from the definition of crossBig
+	call Print_Char
+	
+	ld a,(posYTemp)
+	inc a 
+	ld (posYTemp),a
+	
+	ld a,(loopCounterTemp)	;; this loop max set to 4 initally
+	dec a		
+	ld (loopCounterTemp),a	
+	jp z, drawNaughOrCross_resetYIncX_X	
+	jp drawNaughOrCross_LoopCross
+	
+drawNaughOrCross_resetYIncX_X
+	ld a,(CurrentYPos)
+	ld (posYTemp),a
+
+	ld a,(posXTemp)
+	inc a
+	ld (posXTemp), a
+	
+	ld a,4					; reset inner loop
+	ld (loopCounterTemp),a	; reset inner loop
+	ld a,(loopCounterTemp2)
+	dec a
+	ld (loopCounterTemp2),a
+	jp nz, drawNaughOrCross_LoopCross
+	jp drawNaughOrCross_endFunc	
    	
 drawNaughOrCross_endFunc	
 	ret
@@ -143,11 +168,9 @@ loop_4:
 	
 	ld a,8
 	ld (CurrentXPos),a		
-	sub 1
 	ld (PreviousXPos), a
 	ld a,4
 	ld (CurrentYPos),a
-	sub 1
 	ld (PreviousYPos), a
 	ld a,0
 	ld (wasAMoveFlag),a	
@@ -156,13 +179,10 @@ loop_4:
 gameLoop:
 
 	; save the previous x y positions to memory so we can overwrite with blank after move
-	ld hl, CurrentXPos	
-	ld a, (hl)	
+	ld a, (CurrentXPos)	
 	ld (PreviousXPos), a
-	ld hl, CurrentYPos	
-	ld a, (hl)	
+	ld a, (CurrentYPos)	
 	ld (PreviousYPos), a
-	
 	ld a,0
 	ld (wasAMoveFlag),a	
 	
@@ -182,21 +202,68 @@ readKeyboard:
 	call delaySome		
 	
 	; temporarily place n X or O, depending on whos go it (whoseMoveIsIt) is at the location no at	
-	call drawNaughOrCross
+	call drawNaughOrCross	; if wasAMove zero then go back to game loop 	
 	
 	ld a, (wasAMoveFlag) ; load from memory where x position is stored
-	cp 0  ; check if flag was set
-	jp nz, clearPrevious	; if wasAMove zero then go back to game loop 	
-	jr gameLoop
+	cp 1  ; check if flag was set
+	jp nz, gameLoop 
+	
+	call clearPrevious; if wasAMove zero then go back to game loop 	
+	jp gameLoop
+	ret
 	
 clearPrevious:	; clear the previous location
-	ld a,32
-	ld hl, PreviousYPos
-	ld d, (hl)
-	ld hl, PreviousXPos
-	ld e, (hl)
+	ld a,(PreviousYPos)
+	ld (posYTemp),a
+	ld a, (PreviousXPos)
+	ld (posXTemp),a
+	
+	ld a,4
+	ld (loopCounterTemp),a
+	ld (loopCounterTemp2),a	
+	
+clearPrevious_Loop			
+	ld a, (posXTemp)     ;; current y pos in e for Print_Char
+	ld e,a
+	ld a, (posYTemp)	 ;; current y pos in d for Print_Char
+	ld d,a
+	ld a,32					;; load O character (ultimately this will come from the definition of crossBig
 	call Print_Char
-	jr gameLoop
+	
+	
+;	inc e			;; DEBUG
+;	ld a,78					;; load O character (ultimately this will come from the definition of crossBig
+;	call Print_Char
+	
+	ld a,(posYTemp)
+	inc a 
+	ld (posYTemp),a
+	
+	ld a,(loopCounterTemp)	;; this loop max set to 4 initally
+	dec a		
+	ld (loopCounterTemp),a	
+	jp z, clearPrevious_resetYIncX	
+	jp clearPrevious_Loop
+	
+clearPrevious_resetYIncX
+	ld a,(PreviousYPos)
+	ld (posYTemp),a
+
+	ld a,(posXTemp)
+	inc a
+	ld (posXTemp), a
+	
+	ld a,4					; reset inner loop
+	ld (loopCounterTemp),a	; reset inner loop
+	ld a,(loopCounterTemp2)
+	dec a
+	ld (loopCounterTemp2),a
+	jp nz, clearPrevious_Loop
+	jp clearPrevious_endFunc
+  	
+clearPrevious_endFunc	
+	ret
+
 
 ;CREDIT TO: 
 ; http://www.breakintoprogram.co.uk/computers/zx-spectrum/keyboard
