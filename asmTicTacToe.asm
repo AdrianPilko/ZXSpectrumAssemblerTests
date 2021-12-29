@@ -37,8 +37,9 @@ naught defb 0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0
 
 drawNaughOrCross			; draw naught or cross at position CurrentYPos CurrentXPos
 	ld a, (whoseMoveIsIt)
-	cp a	; compare a, if zero then draw cross, if 1 draw naught
-	jp nz,drawNaught
+	and 1	; compare a, if zero then draw cross, if 1 draw naught
+	jp z,drawNaught
+	;;ld a, 88
 	ld a, 88
 	ld hl, CurrentYPos
 	ld d, (hl)
@@ -47,7 +48,7 @@ drawNaughOrCross			; draw naught or cross at position CurrentYPos CurrentXPos
 	call Print_Char        	
 	ret
 drawNaught	
-	ld a, 55
+	ld a, 79
 	ld hl, CurrentYPos
 	ld d, (hl)
 	ld hl, CurrentXPos
@@ -133,16 +134,16 @@ readKeyboard:
 	cp $5A            ; 5A is row column on keyboard matrix for Z
 	call z, moveDown		
 	cp $4d            ; 
-	;call hprint
 	call z, makeMove		
+	
+	call delaySome		
 	
 	; temporarily place n X or O, depending on whos go it (whoseMoveIsIt) is at the location no at	
 	call drawNaughOrCross
 	
 	ld a, (wasAMoveFlag) ; load from memory where x position is stored
 	cp 0  ; check if flag was set
-	jp nz, clearPrevious	; if wasAMove zero then go back to game loop 
-	
+	jp nz, clearPrevious	; if wasAMove zero then go back to game loop 	
 	jr gameLoop
 	
 clearPrevious:	; clear the previous location
@@ -177,11 +178,27 @@ Read_Keyboard_2:        LD A,(HL)               ; We've found a key at this poin
                         RET
 						
 makeMove
-	ld de,gameTitleStrMove  ; print debug to show Move character pressed
-	ld bc,strLenD 	
-	call print_text
 	ld a, (whoseMoveIsIt)
+	and 1
+	jr z, makeMove_printMoveO
+
+	ld de,gameTitleStrMove_X  ; print debug to show Move and current is cross to go 
+	ld bc,strLenMove_X 	
+	call print_text
+	ld a,0                    ;; save move toggle now crosses = 1
+	ld (whoseMoveIsIt),a
+	jr makeMove_endFunc
 	
+makeMove_printMoveO	
+	ld de,gameTitleStrMove_O  ; print debug to show Move and current is cross to go 
+	ld bc,strLenMove_O 	
+	call print_text
+	ld a, 1					;; save move toggle now crosses = 1
+	ld (whoseMoveIsIt),a
+
+;;;; todo: print the big version of naught or crosses
+
+makeMove_endFunc
 	ret
 
 moveRight:
@@ -190,8 +207,7 @@ moveRight:
 	ld de,gameTitleStrR
 	ld bc,strLenR 	
 	call print_text
-	
-	; this currently doesn't work the character doesn't move....
+		
 	ld a, (CurrentXPos) ; load from memory where x position is stored
 	cp 20  ; limit x pos to width of screen
 	jp z,skipMR
@@ -261,6 +277,11 @@ strLenD			equ $ - gameTitleStrD
 gameTitleStrMove	defb _at, 0, 0, _ink, 1, _paper, 6, _bright, 1, "      Noughts and Crosses, Move"
 strLenMove			equ $ - gameTitleStrMove
 
+gameTitleStrMove_X defb _at, 0, 0, _ink, 1, _paper, 6, _bright, 1, "      Noughts and Crosses,MoveX"
+strLenMove_X	    equ $ - gameTitleStrMove_X
+
+gameTitleStrMove_O defb _at, 0, 0, _ink, 1, _paper, 6, _bright, 1, "      Noughts and Crosses,MoveO"
+strLenMove_O	    equ $ - gameTitleStrMove_O
 ;CREDIT TO: 
 ; http://www.breakintoprogram.co.uk/computers/zx-spectrum/keyboard
 Keyboard_Map    defb &FE,"#","Z","X","C","V"	
@@ -280,6 +301,21 @@ Keyboard_Map    defb &FE,"#","Z","X","C","V"
 ;  D: Character Y position
 ;  E: Character X position
 ;
+delaySome	;; modified from  http://www.paleotechnologist.net/?p=2589
+	LD BC, 50h            ;Loads BC with hex 100
+	delaySomeOuter:
+	LD DE, 100h            ;Loads DE with hex 100
+	delaySomeInner:
+	DEC DE                  ;Decrements DE
+	LD A, D                 ;Copies D into A
+	OR E                    ;Bitwise OR of E with A (now, A = D | E)
+	JP NZ, delaySomeInner            ;Jumps back to Inner: label if A is not zero
+	DEC BC                  ;Decrements BC
+	LD A, B                 ;Copies B into A
+	OR C                    ;Bitwise OR of C with A (now, A = B | C)
+	JP NZ, delaySomeOuter            ;Jumps back to Outer: label if A is not zero
+	ret
+
 Print_Char:             LD HL, 0x3C00           ; Character set bitmap data in ROM
                         LD B,0                  ; BC = character code
                         LD C, A
