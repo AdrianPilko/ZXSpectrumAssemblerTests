@@ -28,32 +28,75 @@ PreviousXPos        equ $8580
 PreviousYPos        equ $8581
 wasAMoveFlag        equ $8582
 whoseMoveIsIt		equ $8583  ;if zero then naughts, non zero crosses
+loopCounterTemp		equ $8586  
+loopCounterTemp2	equ $8587 
+posYTemp			equ $8588
+posXTemp			equ $8589
 
 call start
 ret
 
-cross  defb 1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1
-naught defb 0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0
+crossBig  defb 1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1
+naughtBig defb 0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0
 
 drawNaughOrCross			; draw naught or cross at position CurrentYPos CurrentXPos
 	ld a, (whoseMoveIsIt)
 	and 1	; compare a, if zero then draw cross, if 1 draw naught
 	jp z,drawNaught
-	;;ld a, 88
-	ld a, 88
-	ld hl, CurrentYPos
-	ld d, (hl)
-	ld hl, CurrentXPos
-	ld e, (hl)
-	call Print_Char        	
-	ret
+	
+	ld a,(CurrentYPos)
+	ld (posYTemp),a
+	ld a, (CurrentXPos)
+	ld (posXTemp),a
+	
+	ld a,4
+	ld (loopCounterTemp),a
+	ld (loopCounterTemp2),a		
+	
+drawNaughOrCross_LoopNaught			
+	ld a, (posXTemp)     ;; current y pos in e for Print_Char
+	ld e,a
+	ld a, (posYTemp)	 ;; current y pos in d for Print_Char
+	ld d,a
+	ld a,88					;; load X character (ultimately this will come from the definition of crossBig
+	call Print_Char
+	
+	ld a,(posYTemp)
+	inc a 
+	ld (posYTemp),a
+	
+	ld a,(loopCounterTemp)	;; this loop max set to 4 initally
+	dec a		
+	ld (loopCounterTemp),a	
+	jp z, drawNaughOrCross_resetYIncX	
+	jp drawNaughOrCross_LoopNaught
+	
+drawNaughOrCross_resetYIncX
+	ld a,(CurrentYPos)
+	ld (posYTemp),a
+
+	ld a,(posXTemp)
+	inc a
+	ld (posXTemp), a
+	
+	ld a,4					; reset inner loop
+	ld (loopCounterTemp),a	; reset inner loop
+	ld a,(loopCounterTemp2)
+	dec a
+	ld (loopCounterTemp2),a
+	jp nz, drawNaughOrCross_LoopNaught
+	jp drawNaughOrCross_endFunc
+	
 drawNaught	
+	ld (loopCounterTemp),a
 	ld a, 79
 	ld hl, CurrentYPos
 	ld d, (hl)
 	ld hl, CurrentXPos
 	ld e, (hl)
-	call Print_Char        	
+	call Print_Char     
+   	
+drawNaughOrCross_endFunc	
 	ret
 
 start:		
@@ -211,7 +254,7 @@ moveRight:
 	ld a, (CurrentXPos) ; load from memory where x position is stored
 	cp 20  ; limit x pos to width of screen
 	jp z,skipMR
-	add a,4			  ; increment the register a (x position = x position + 1)
+	add a,6			  ; increment the register a (x position = x position + 1)
 skipMR:	ld (CurrentXPos), a ; store the x position back to memory
 	ret
 moveLeft:	
@@ -223,7 +266,7 @@ moveLeft:
 	ld a, (CurrentXPos) ; load from memory where x position is stored
 	cp 8	;limit x pos to minimum of left of screen (zero)
 	jp z, skipML
-	sub 4			  ; decrement the register a (x position = x position - 1)	
+	sub 6			  ; decrement the register a (x position = x position - 1)	
 skipML:	ld (CurrentXPos), a ; store the x position back to memory
 	ret	
 moveUp:
@@ -235,7 +278,7 @@ moveUp:
 	ld a, (CurrentYPos) ; load from memory where y position is stored
 	cp 4
 	jp z, skipMU
-	sub 4			  ; increment the register a (y position = y position - 1)
+	sub 5			  ; increment the register a (y position = y position - 1)
 skipMU: ld (CurrentYPos), a ; store the y position back to memory
 	ret
 moveDown:	
@@ -245,9 +288,9 @@ moveDown:
 	ld bc,strLenD 	
 	call print_text
 	ld a, (CurrentYPos) ; load from memory where y position is stored	
-	cp 16
+	cp 14
 	jp z,skipMD
-	add a,4		  ; increment the register a (y position = y position + 1)
+	add a,5		  ; increment the register a (y position = y position + 1)
 skipMD: ld (CurrentYPos), a ; store the y position back to memory	
 	ret		
 clearKey:
