@@ -33,11 +33,43 @@ loopCounterTemp2	equ $8587
 posYTemp			equ $8588
 posXTemp			equ $8589
 
+ROM_PRINT               EQU  0x203C 
+
 call start
 ret
 
-crossBig  defb 1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1
-naughtBig defb 0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0
+crossBig  defb 1
+crossBig1  defb 			   0
+crossBig2  defb 			   0
+crossBig3  defb 			   1
+crossBig4  defb 0
+crossBig5  defb 			   1
+crossBig6  defb 1
+crossBig7  defb 			   0
+crossBig8  defb 			   0
+crossBig9  defb 			   1
+crossBig10  defb 			   1
+crossBig11  defb 			   0
+crossBig12  defb 			   1
+crossBig13  defb 			   0
+crossBig14  defb 			   0
+crossBig15  defb 			   1   ; i know this is wasteful of memory!
+naughtBig defb 0
+naughtBig1  defb 1
+naughtBig2  defb 1
+naughtBig3  defb 0
+naughtBig4  defb 1
+naughtBig5  defb 0
+naughtBig6  defb 0
+naughtBig7  defb 1
+naughtBig8  defb 1
+naughtBig9  defb 0
+naughtBig10  defb 0
+naughtBig11  defb 1
+naughtBig12  defb 0
+naughtBig13  defb 1
+naughtBig14  defb 1
+naughtBig15  defb 0		
 
 drawNaughOrCross			; draw naught or cross at position CurrentYPos CurrentXPos
 	ld a,(CurrentYPos)
@@ -48,7 +80,7 @@ drawNaughOrCross			; draw naught or cross at position CurrentYPos CurrentXPos
 	ld a,4
 	ld (loopCounterTemp),a
 	ld (loopCounterTemp2),a	
-	
+	ld hl,naughtBig  ; ultimately will be either naught or cross big
 	ld a, (whoseMoveIsIt)
 	and 1	; compare a, if zero then draw cross, if 1 draw naught
 	jp z,drawNaughOrCross_LoopCross
@@ -58,8 +90,24 @@ drawNaughOrCross_LoopNaught
 	ld e,a
 	ld a, (posYTemp)	 ;; current y pos in d for Print_Char
 	ld d,a
-	ld a,79					;; load O character (ultimately this will come from the definition of crossBig
+	
+	ld a, (hl)
+	inc hl
+
+	cp 1
+	jp z, drawNaughOrCross_SetNaught
+	ld a,32					;; load space character 
+	jp drawNaughOrCross_CallPrintChar
+drawNaughOrCross_SetNaught			
+	ld a,79					;; set register a to the O char, next condition jump skips overwriting with space 	
+drawNaughOrCross_CallPrintChar
+push hl
 	call Print_Char
+pop hl	
+
+;di
+;drawNaughOrCross_DEBUG_STOP
+;jr  drawNaughOrCross_DEBUG_STOP		
 	
 	ld a,(posYTemp)
 	inc a 
@@ -74,7 +122,6 @@ drawNaughOrCross_LoopNaught
 drawNaughOrCross_resetYIncX
 	ld a,(CurrentYPos)
 	ld (posYTemp),a
-
 	ld a,(posXTemp)
 	inc a
 	ld (posXTemp), a
@@ -88,6 +135,7 @@ drawNaughOrCross_resetYIncX
 	jp drawNaughOrCross_endFunc
 	
 drawNaughOrCross_LoopCross	
+
 	ld a, (posXTemp)     ;; current y pos in e for Print_Char
 	ld e,a
 	ld a, (posYTemp)	 ;; current y pos in d for Print_Char
@@ -227,12 +275,12 @@ clearPrevious_Loop
 	ld e,a
 	ld a, (posYTemp)	 ;; current y pos in d for Print_Char
 	ld d,a
-	ld a,32					;; load O character (ultimately this will come from the definition of crossBig
+	ld a,32					;; load space character
 	call Print_Char
 	
 	
 ;	inc e			;; DEBUG
-;	ld a,78					;; load O character (ultimately this will come from the definition of crossBig
+;	ld a,78					
 ;	call Print_Char
 	
 	ld a,(posYTemp)
