@@ -80,10 +80,12 @@ drawNaughOrCross			; draw naught or cross at position CurrentYPos CurrentXPos
 	ld a,4
 	ld (loopCounterTemp),a
 	ld (loopCounterTemp2),a	
-	ld hl,naughtBig  ; ultimately will be either naught or cross big
+	
 	ld a, (whoseMoveIsIt)
+	ld hl,crossBig  ; ultimately will be either naught or cross big
 	and 1	; compare a, if zero then draw cross, if 1 draw naught
 	jp z,drawNaughOrCross_LoopCross
+	ld hl,naughtBig  ; ultimately will be either naught or cross big
 	
 drawNaughOrCross_LoopNaught			
 	ld a, (posXTemp)     ;; current y pos in e for Print_Char
@@ -101,13 +103,10 @@ drawNaughOrCross_LoopNaught
 drawNaughOrCross_SetNaught			
 	ld a,79					;; set register a to the O char, next condition jump skips overwriting with space 	
 drawNaughOrCross_CallPrintChar
-push hl
+	push hl
 	call Print_Char
-pop hl	
-
-;di
-;drawNaughOrCross_DEBUG_STOP
-;jr  drawNaughOrCross_DEBUG_STOP		
+	pop hl	
+	
 	
 	ld a,(posYTemp)
 	inc a 
@@ -135,13 +134,24 @@ drawNaughOrCross_resetYIncX
 	jp drawNaughOrCross_endFunc
 	
 drawNaughOrCross_LoopCross	
-
 	ld a, (posXTemp)     ;; current y pos in e for Print_Char
 	ld e,a
 	ld a, (posYTemp)	 ;; current y pos in d for Print_Char
 	ld d,a
-	ld a,88					;; load X character (ultimately this will come from the definition of crossBig
+	
+	ld a, (hl)
+	inc hl
+
+	cp 1
+	jp z, drawNaughOrCross_SetCross
+	ld a,32					;; load space character 
+	jp drawNaughOrCross_CallPrintCharX
+drawNaughOrCross_SetCross			
+	ld a,88					;; set register a to the O char, next condition jump skips overwriting with space 	
+drawNaughOrCross_CallPrintCharX
+	push hl
 	call Print_Char
+	pop hl	
 	
 	ld a,(posYTemp)
 	inc a 
@@ -149,7 +159,8 @@ drawNaughOrCross_LoopCross
 	
 	ld a,(loopCounterTemp)	;; this loop max set to 4 initally
 	dec a		
-	ld (loopCounterTemp),a	
+	ld (loopCounterTemp),a
+	
 	jp z, drawNaughOrCross_resetYIncX_X	
 	jp drawNaughOrCross_LoopCross
 	
