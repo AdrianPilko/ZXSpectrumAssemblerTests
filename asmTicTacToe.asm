@@ -33,11 +33,31 @@ loopCounterTemp2	equ $8587
 posYTemp			equ $8588
 posXTemp			equ $8589
 
+MovesAccross		equ $858a
+MovesDown			equ $858b
+BoardTempIndex		equ $858c
+
 ROM_PRINT               EQU  0x203C 
 
 call start
 ret
 
+; we store the board state in this block of memory		
+; a zero inidcates no move, 1 indicates an X, 2 is an O
+boardStore defb 	0
+boardStore1 defb    0
+boardStore2 defb	0
+boardStore3 defb	0
+boardStore4 defb	0
+boardStore5 defb	0
+boardStore6 defb	0
+boardStore7 defb	0
+boardStore8 defb	0
+ 
+boardStoreXPos defb 	11,11,11,15,15,15,21,21,21
+boardStoreYPos defb 	6,6,6,10,10,10,15,15,15  
+
+;; define the "bitmap" for the naught and cross
 crossBig  defb 1
 crossBig1  defb 			   0
 crossBig2  defb 			   0
@@ -94,7 +114,7 @@ drawNaughOrCross_LoopNaught
 	ld d,a
 	
 	ld a, (hl)
-	inc hl
+	inc hl 
 
 	cp 1
 	jp z, drawNaughOrCross_SetNaught
@@ -184,6 +204,10 @@ drawNaughOrCross_endFunc
 	ret
 
 start:		
+	ld a, 0
+	ld (MovesAccross),a		; initialise moves accross and down 
+	ld (MovesDown),a
+	
 	call clear_screen ; clear the screen and initialise screen stream
 	call open_screen
 	; print game title
@@ -257,8 +281,8 @@ readKeyboard:
 	call z, moveDown		
 	cp $4d            ; 
 	call z, makeMove		
-	
-	call delaySome		
+		
+	call delaySome
 	
 	; temporarily place n X or O, depending on whos go it (whoseMoveIsIt) is at the location no at	
 	call drawNaughOrCross	; if wasAMove zero then go back to game loop 	
@@ -350,10 +374,10 @@ makeMove
 	ld a, (whoseMoveIsIt)
 	and 1
 	jr z, makeMove_printMoveO
-
 	ld de,gameTitleStrMove_X  ; print debug to show Move and current is cross to go 
 	ld bc,strLenMove_X 	
 	call print_text
+	
 	ld a,0                    ;; save move toggle now crosses = 1
 	ld (whoseMoveIsIt),a
 	jr makeMove_endFunc
@@ -368,6 +392,25 @@ makeMove_printMoveO
 ;;;; todo: print the big version of naught or crosses
 
 makeMove_endFunc
+	;; calculate the offset
+	;; offset = (accross * 3) + down
+	ld a, (MovesAccross)
+	ld b, (MovesDown)
+	add a, (MovesAccross)		; is no multiply, only add, so add 2 more times to get * 3
+	add a, (MovesAccross)
+	add a, b
+	ld (BoardTempIndex),a
+
+	di
+debugXXX
+	jp  debugXXX
+	ei
+	
+	ld hl, boardStore   ; the board state "store"
+	ld de, BoardTempIndex ; load the index offset we just calculated into de
+	add hl,de			; the address of the de'th element of the board state array is now in hl
+	ld (hl), 1			; in the board state 0=empty square, 1=naught, 2=cross, 
+
 	ret
 
 moveRight:
@@ -376,10 +419,15 @@ moveRight:
 	ld de,gameTitleStrR
 	ld bc,strLenR 	
 	call print_text
-		
+	
 	ld a, (CurrentXPos) ; load from memory where x position is stored
 	cp 20  ; limit x pos to width of screen
 	jp z,skipMR
+	
+	;ld a,(MovesAccross) ;; increment and store Moves)
+	;inc a
+	;ld (MovesAccross),a
+	
 	add a,6			  ; increment the register a (x position = x position + 1)
 skipMR:	ld (CurrentXPos), a ; store the x position back to memory
 	ret
@@ -389,9 +437,15 @@ moveLeft:
 	ld de,gameTitleStrL
 	ld bc,strLenL 	
 	call print_text
+		
 	ld a, (CurrentXPos) ; load from memory where x position is stored
 	cp 8	;limit x pos to minimum of left of screen (zero)
 	jp z, skipML
+	
+	;ld a,(MovesAccross) ;; increment and store Moves)
+	;dec a
+	;ld (MovesAccross),a
+	
 	sub 6			  ; decrement the register a (x position = x position - 1)	
 skipML:	ld (CurrentXPos), a ; store the x position back to memory
 	ret	
@@ -404,6 +458,12 @@ moveUp:
 	ld a, (CurrentYPos) ; load from memory where y position is stored
 	cp 4
 	jp z, skipMU
+	
+	;ld a,(MovesDown) ;; increment and store Moves)
+	;dec a
+	;ld (MovesDown),a
+	
+	
 	sub 5			  ; increment the register a (y position = y position - 1)
 skipMU: ld (CurrentYPos), a ; store the y position back to memory
 	ret
@@ -416,18 +476,18 @@ moveDown:
 	ld a, (CurrentYPos) ; load from memory where y position is stored	
 	cp 14
 	jp z,skipMD
+
+	;ld a,(MovesDown) ;; increment and store Moves)
+	;inc a
+	;ld (MovesDown),a
+	
 	add a,5		  ; increment the register a (y position = y position + 1)
 skipMD: ld (CurrentYPos), a ; store the y position back to memory	
 	ret		
 clearKey:
 		ret
 
-; we store the board state in this block of memory		
-; a zero inidcates no move, 1 indicates an X, 2 is an O
-boardStore defb 	0,0,0,0,0,0,0,0,0 
-boardStoreXPos defb 	11,11,11,15,15,15,21,21,21
-boardStoreYPos defb 	6,6,6,10,10,10,15,15,15  
-										
+									
 gameTitleStr	defb _at, 0, 0, _ink, 1, _paper, 6, _bright, 1, "      Noughts and Crosses      "
 strLen			equ $ - gameTitleStr
 
