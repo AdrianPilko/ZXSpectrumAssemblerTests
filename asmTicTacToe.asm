@@ -36,6 +36,7 @@ posXTemp			equ $8589
 MovesAccross		equ $858a
 MovesDown			equ $858b
 BoardTempIndex		equ $858c
+nextPlayerTurnFlag  equ $858d
 
 ROM_PRINT               EQU  0x203C 
 
@@ -205,8 +206,9 @@ drawNaughOrCross_endFunc
 
 start:		
 	ld a, 0
-	ld (MovesAccross),a		; initialise moves accross and down 
+	ld (MovesAccross),a		; initialise some flags and index
 	ld (MovesDown),a
+	ld (nextPlayerTurnFlag),a
 	
 	call clear_screen ; clear the screen and initialise screen stream
 	call open_screen
@@ -289,7 +291,10 @@ readKeyboard:
 	
 	ld a, (wasAMoveFlag) ; load from memory where x position is stored
 	cp 1  ; check if flag was set
-	jp nz, gameLoop 
+	jp z, gameLoop 
+	
+	ld a, (nextPlayerTurnFlag)
+	jp nz, gameLoop
 	
 	call clearPrevious; if wasAMove zero then go back to game loop 	
 	jp gameLoop
@@ -394,23 +399,31 @@ makeMove_printMoveO
 makeMove_endFunc
 	;; calculate the offset
 	;; offset = (accross * 3) + down
-	ld a, (MovesAccross)
-	ld b, (MovesDown)
-	add a, (MovesAccross)		; is no multiply, only add, so add 2 more times to get * 3
-	add a, (MovesAccross)
-	add a, b
+	ld hl, MovesDown
+	ld a, (hl)
+	add a, (hl)		; is no multiply, only add, so add 2 more times to get * 3
+	add a, (hl)
+	ld hl, MovesAccross
+	add a, (hl)
 	ld (BoardTempIndex),a
 
-	di
-debugXXX
-	jp  debugXXX
-	ei
+	;di
+;debugXXX
+	;jp  debugXXX
+	;ei
 	
 	ld hl, boardStore   ; the board state "store"
-	ld de, BoardTempIndex ; load the index offset we just calculated into de
+	ld de, (BoardTempIndex) ; load the index offset we just calculated into de
 	add hl,de			; the address of the de'th element of the board state array is now in hl
 	ld (hl), 1			; in the board state 0=empty square, 1=naught, 2=cross, 
-
+;	di
+;debugXXX
+	;jp  debugXXX
+	;ei
+	
+	;  flag the fact the player set the move, this is used to control if current place is overritten
+	ld a, 1
+	ld (nextPlayerTurnFlag),a
 	ret
 
 moveRight:
@@ -423,13 +436,15 @@ moveRight:
 	ld a, (CurrentXPos) ; load from memory where x position is stored
 	cp 20  ; limit x pos to width of screen
 	jp z,skipMR
-	
-	;ld a,(MovesAccross) ;; increment and store Moves)
-	;inc a
-	;ld (MovesAccross),a
-	
 	add a,6			  ; increment the register a (x position = x position + 1)
-skipMR:	ld (CurrentXPos), a ; store the x position back to memory
+	ld (CurrentXPos), a ; store the x position back to memory
+	
+	ld a,(MovesAccross) ;; increment and store MovesAccross index
+	inc a
+	ld (MovesAccross),a
+skipMR:	
+	; do nothing, no change to CurrentXPos
+
 	ret
 moveLeft:	
 	ld a,1
@@ -442,13 +457,16 @@ moveLeft:
 	cp 8	;limit x pos to minimum of left of screen (zero)
 	jp z, skipML
 	
-	;ld a,(MovesAccross) ;; increment and store Moves)
-	;dec a
-	;ld (MovesAccross),a
-	
 	sub 6			  ; decrement the register a (x position = x position - 1)	
-skipML:	ld (CurrentXPos), a ; store the x position back to memory
+	ld (CurrentXPos), a ; store the x position back to memory
+	
+	ld a,(MovesAccross) ;; decrement  store MovesAccross index
+	dec a
+	ld (MovesAccross),a
+skipML:	
+	; do nothing, no change to CurrentXPos	
 	ret	
+	
 moveUp:
 	ld a,1
 	ld (wasAMoveFlag),a
@@ -458,15 +476,16 @@ moveUp:
 	ld a, (CurrentYPos) ; load from memory where y position is stored
 	cp 4
 	jp z, skipMU
+
+	sub 5			  ; decrement the register a (y position = y position - 1)
+	ld (CurrentYPos), a ; store the y position back to memory
 	
-	;ld a,(MovesDown) ;; increment and store Moves)
-	;dec a
-	;ld (MovesDown),a
-	
-	
-	sub 5			  ; increment the register a (y position = y position - 1)
-skipMU: ld (CurrentYPos), a ; store the y position back to memory
+	ld a,(MovesDown) ;; decrement and store MovesDown index
+	dec a
+	ld (MovesDown),a
+skipMU: 
 	ret
+	
 moveDown:	
 	ld a,1
 	ld (wasAMoveFlag),a
@@ -476,18 +495,16 @@ moveDown:
 	ld a, (CurrentYPos) ; load from memory where y position is stored	
 	cp 14
 	jp z,skipMD
-
-	;ld a,(MovesDown) ;; increment and store Moves)
-	;inc a
-	;ld (MovesDown),a
-	
 	add a,5		  ; increment the register a (y position = y position + 1)
-skipMD: ld (CurrentYPos), a ; store the y position back to memory	
+	ld (CurrentYPos), a ; store the y position back to memory	
+	
+	ld a,(MovesDown) ;;increment and store MovesDown index
+	inc a
+	ld (MovesDown),a
+skipMD: 
 	ret		
-clearKey:
-		ret
-
-									
+	
+								
 gameTitleStr	defb _at, 0, 0, _ink, 1, _paper, 6, _bright, 1, "      Noughts and Crosses      "
 strLen			equ $ - gameTitleStr
 
