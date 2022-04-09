@@ -268,6 +268,11 @@ gameLoop:
 	ld (PreviousXPos), a
 	ld a, (CurrentYPos)	
 	ld (PreviousYPos), a
+
+resetNextPlayerTurnFlag:
+	ld a, 1
+	ld (nextPlayerTurnFlag),a
+	
 	ld a,0
 	ld (wasAMoveFlag),a	
 	
@@ -290,11 +295,12 @@ readKeyboard:
 	call drawNaughOrCross	; if wasAMove zero then go back to game loop 	
 	
 	ld a, (wasAMoveFlag) ; load from memory where x position is stored
-	cp 1  ; check if flag was set
-	jp z, gameLoop 
+	cp 0  
+	jp z, readKeyboard 
 	
 	ld a, (nextPlayerTurnFlag)
-	jp nz, gameLoop
+	cp 1
+	jp nz, resetNextPlayerTurnFlag
 	
 	call clearPrevious; if wasAMove zero then go back to game loop 	
 	jp gameLoop
@@ -320,7 +326,7 @@ clearPrevious_Loop
 	
 	
 ;	inc e			;; DEBUG
-;	ld a,78					
+;	ld a,78					0
 ;	call Print_Char
 	
 	ld a,(posYTemp)
