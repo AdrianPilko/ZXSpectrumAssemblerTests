@@ -1,3 +1,4 @@
+; from forum post by Jon Kingsman
 main
 	org 33000
 	di
