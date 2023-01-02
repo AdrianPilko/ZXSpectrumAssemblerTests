@@ -50,8 +50,8 @@ dontmove
 	jr z,gameover
 	ld a,8  ;print car
 	ld (hl),a
-	ld hl,23263 ;scroll road
-	ld de,23295
+	ld hl,23263 ;scroll road (735 from start of screen memory
+	ld de,23295 ; 32 (one row) more than previous address
 	ld bc,736
 	lddr
 	pop bc  ;retrieve score
