@@ -1,6 +1,6 @@
+org 33000
 ; from forum post by Jon Kingsman
-main
-	org 33000
+main:	
 	di
 	ld hl, 22537 ;initialise road
 	push hl  ;save road posn
@@ -117,3 +117,4 @@ gameover
 	pop hl  ;empty stack
 	ei
 	ret; game and tutorial written by Jon Kingsman
+end main
