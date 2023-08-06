@@ -1,29 +1,16 @@
-org $8000
-
-; ROM macros 
-clear_screen	equ $0d6b
-open_screen  	equ $1601
-print_text  	equ $203c
-
-; the text to print
-hello_text:
-	db 'Hello world!',13
+org $F000
 
 main:
-	; call the clear the screen ROM code
-	call clear_screen
-	; open screen channel
-	ld hl, $4000
-    ld b, $3A    
-    ld a, $01
-loopOuter:
-    push bc
-    ld b,$74
-loopInner:    
-    ld (hl),a
-    inc hl 
-    djnz loopInner
+    ld hl, $4000
+    ld b, 192
+loop1:
+    push bc        
+    ld b, 32
+loop2:
+    ld (hl),$ff
+    inc hl
+    djnz loop2
     pop bc
-    djnz loopOuter
+    djnz loop1    
 	ret
 end main
