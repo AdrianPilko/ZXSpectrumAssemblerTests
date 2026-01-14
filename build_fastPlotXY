@@ -1,0 +1,2 @@
+rm -f  fastPlotXY.tap
+pasmo -1 --tapbas fastPlotXY.asm fastPlotXY.tap
