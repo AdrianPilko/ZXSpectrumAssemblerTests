@@ -1,32 +1,55 @@
 org $8000
 
 Main:
-    ld hl, $4050  ; load a semi random address
-    ld a, $01
-    ld b, $20
-MainLoop1:
-    push bc
-        call NextScan
-        ld a, $01
-        ld (hl), a
-    pop bc
-    djnz MainLoop1
+    call $0d6b
 
-    ;if we want to draw a line horizontally its easy, just in hl
-    ld b, $5    ; number of multiples of 8 blocks to display width
-    ld a, %10000000
+    ld b, 24
+    ld hl, $5800
+    ld de, 32
+SetColourLoop:
+    ld a, $05
+    ld (hl), a
+    add hl, de 
+    djnz SetColourLoop
+
+    ld b, 24
+    ld hl, $581f
+    ld de, 32
+SetColourLoop2:
+    ld a, $05
+    ld (hl), a
+    add hl, de 
+    djnz SetColourLoop2
+
+
+
+    ld hl, $4000  ; start of pixel memory
+    call DrawTheVeticalBanner
+    ld hl, $401f  ; pixel address of last column
+    call DrawTheVeticalBanner
+EndLoop:
+    jp EndLoop
+
+
+
+
+DrawTheVeticalBanner:    
+    ld b, 24    ; number of multiples of 8 blocks to display width
 MainLoop2:
     push bc
         ld b, 8
+        push hl
+            ld hl, Sprite
+            push hl
+            pop de
+        pop hl 
 InnerLoop:
+        ld a, (de)
         ld (hl), a
-        rra
-        call Delay
+        call NextScan
+        inc de
+;        call Delay
         djnz InnerLoop
-        xor a
-        ld (hl), a
-        inc l
-        ld a, %10000000
     pop bc
     djnz MainLoop2
 ret
@@ -38,7 +61,7 @@ Delay:
     ld b, $f0
 DelayLoopOuter:
     push bc
-        ld b, $4f
+        ld b, $6
 DelayLoop:
         ld a, 4
         djnz DelayLoop 
@@ -94,4 +117,13 @@ sub $08
 ld h, a
 ret
 
+Sprite:
+    defb %11100111
+    defb %11011011
+    defb %10111101
+    defb %01100110
+    defb %01100110
+    defb %10111101
+    defb %11011011
+    defb %11100111
 end $8000
