@@ -13,15 +13,40 @@ MainLoop1:
     djnz MainLoop1
 
     ;if we want to draw a line horizontally its easy, just in hl
-    ld b, $5
+    ld b, $5    ; number of multiples of 8 blocks to display width
+    ld a, %10000000
 MainLoop2:
     push bc
-        ld a, $ff
+        ld b, 8
+InnerLoop:
+        ld (hl), a
+        rra
+        call Delay
+        djnz InnerLoop
+        xor a
         ld (hl), a
         inc l
+        ld a, %10000000
     pop bc
     djnz MainLoop2
+ret
 
+Delay:
+    push bc
+    push af
+
+    ld b, $f0
+DelayLoopOuter:
+    push bc
+        ld b, $4f
+DelayLoop:
+        ld a, 4
+        djnz DelayLoop 
+    pop bc
+    djnz DelayLoopOuter
+
+    pop af
+    pop bc
 ret
 
 
