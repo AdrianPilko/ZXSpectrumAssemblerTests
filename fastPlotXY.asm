@@ -1,13 +1,13 @@
 org $8000
 
 Main:
-    call $0d6b
+    call $0d6b   ; clear screen rom routine
 
     ld b, 24
     ld hl, $5800
     ld de, 32
 SetColourLoop:
-    ld a, $05
+    ld a, $02
     ld (hl), a
     add hl, de 
     djnz SetColourLoop
@@ -21,15 +21,43 @@ SetColourLoop2:
     add hl, de 
     djnz SetColourLoop2
 
-
-
     ld hl, $4000  ; start of pixel memory
     call DrawTheVeticalBanner
     ld hl, $401f  ; pixel address of last column
     call DrawTheVeticalBanner
+    ld hl, $4001
+    call DrawTheHorizontalBanner
+    ;010T TSSS LLLC CCCC
+    ld h, %01010000 
+    ld l, %11100001
+    call DrawTheHorizontalBanner
 EndLoop:
     jp EndLoop
 
+
+
+DrawTheHorizontalBanner:    
+    ld b, 30    ; number of multiples of 8 blocks to display width
+MainLoopHB1:
+    push bc
+        ld b, 8
+        push hl
+            ld hl, Sprite
+            push hl
+            pop de
+        pop hl
+        push hl 
+InnerLoopHB1:
+            ld a, (de)
+            ld (hl), a
+            call NextScan
+            inc de
+            djnz InnerLoopHB1
+        pop hl
+        inc l
+        pop bc
+    djnz MainLoopHB1
+ret
 
 
 
@@ -48,7 +76,6 @@ InnerLoop:
         ld (hl), a
         call NextScan
         inc de
-;        call Delay
         djnz InnerLoop
     pop bc
     djnz MainLoop2
