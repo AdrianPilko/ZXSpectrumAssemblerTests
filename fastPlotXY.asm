@@ -6,7 +6,48 @@ START_OF_ATTRIBUTE_SCREEN_MEM equ $5800
 
 Main:
     call CLS   ; clear screen rom routine using CLS equ
+    call drawPlayAreaBorder
 
+    ld hl, $4849
+    ld de, GraphicTile2_8x8
+    ld a, 12
+    call DrawHorizontalBar
+
+    ld hl, $5050  ;; start address of platform at left end
+    xor a
+MovingPlatformLoop:
+    push af
+        ld a, 3
+        push hl
+            ld de, GraphicTile3_8x8
+            call DrawHorizontalBar
+            call Delay
+        pop hl
+    pop af
+    inc l
+    inc a
+    cp 10
+    jp z, resetPlatform
+    jp EndLoopMovingPlatform    
+resetPlatform:
+    ld hl, $5050            ;; for now move it instantly back, later make it sweep back
+    xor a                   ;; a storing the numbner of times moved
+    push af
+    push hl 
+    ld hl, $5050
+    ld de, GraphicTileBlank_8x8
+    ld a, 13
+    call DrawHorizontalBar
+    pop hl
+    pop af
+EndLoopMovingPlatform    
+    jp MovingPlatformLoop
+
+;; might never get here
+EndLoop:
+    jp EndLoop
+
+drawPlayAreaBorder
     ld b, 24
     ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
     ld de, 32
@@ -42,7 +83,7 @@ SetColourLoop4:
     djnz SetColourLoop4
 
 
-
+;; setup the screen with boarders and ledges
     ld hl, $4000  ; start of pixel memory
     ld de, GraphicTile1_8x8
     ld a, 24
@@ -60,9 +101,12 @@ SetColourLoop4:
     ld l, %11100001
     ld de, GraphicTile1_8x8
     ld a, 30
-    call DrawHorizontalBar
-EndLoop:
-    jp EndLoop
+    call DrawHorizontalBar  
+    ret
+
+
+
+
 
 ;; Draw a horizontal line of the value stored in 8x8 tile
 ;; The 8x8 tile first location should be stored in de
@@ -118,10 +162,10 @@ Delay:
     push bc
     push af
 
-    ld b, $f0
+    ld b, $6f
 DelayLoopOuter:
     push bc
-        ld b, $6
+        ld b, $f0
 DelayLoop:
         ld a, 4
         djnz DelayLoop 
@@ -177,7 +221,8 @@ sub $08
 ld h, a
 ret
 
-GraphicTile1_8x8:
+;; due to attribute drawing these can appear in reverse of what they look like here with 1 or zeros opposite
+GraphicTile1_8x8:    ;  a diamond pattern with a dot in the middle
     defb %11100111
     defb %11011011
     defb %10111101
@@ -186,4 +231,34 @@ GraphicTile1_8x8:
     defb %10111101
     defb %11011011
     defb %11100111
+
+GraphicTile2_8x8:    ; a box filled in if using attribute colour
+    defb %00000000
+    defb %01111110
+    defb %01111110
+    defb %01111110
+    defb %01111110
+    defb %01111110
+    defb %01111110
+    defb %00000000
+
+GraphicTile3_8x8:    ; a box empty for no attribute colour
+    defb %11111111
+    defb %10000001
+    defb %10000001
+    defb %10000001
+    defb %10000001
+    defb %10000001
+    defb %10000001
+    defb %11111111
+
+GraphicTileBlank_8x8:    ; a box empty for no attribute colour
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
 end $8000
