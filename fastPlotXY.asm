@@ -21,24 +21,49 @@ MovingPlatformLoop:
         push hl
             ld de, GraphicTile3_8x8
             call DrawHorizontalBar
+            ; we need to print a blank block at each end
+            pop hl
+            push hl
+                dec l
+                ld de, GraphicTileBlank_8x8
+                ld a, 1
+                push hl
+                    call DrawHorizontalBar
+                pop hl
+                ;; becasue the moving platform is length 3 inc l by 4 to get to end
+                inc l
+                inc l
+                inc l
+                inc l
+                ld de, GraphicTileBlank_8x8
+                ld a, 1
+                call DrawHorizontalBar
+
             call Delay
         pop hl
-    pop af
+    
+    ;; determine direction platforms moving
+    ld a, (platform_direction)
+    cp 0
+    jp z, platform_moves_left
+platform_moves_right
     inc l
+    inc l ;; this avoids a second jump platform_moves_left always decs, probably faster
+platform_moves_left
+    dec l
+    pop af
     inc a
     cp 10
     jp z, resetPlatform
     jp EndLoopMovingPlatform    
 resetPlatform:
-    ld hl, $5050            ;; for now move it instantly back, later make it sweep back
+    ;ld hl, $5050            ;; for now move it instantly back, later make it sweep back
     xor a                   ;; a storing the numbner of times moved
-    push af
-    push hl 
-    ld hl, $5050
-    ld de, GraphicTileBlank_8x8
-    ld a, 13
-    call DrawHorizontalBar
-    pop hl
+    push af 
+    ; toggle the left right flag in  platform_direction
+    ld a, (platform_direction)
+    xor %00000001
+    ld (platform_direction), a 
     pop af
 EndLoopMovingPlatform    
     jp MovingPlatformLoop
@@ -52,7 +77,7 @@ drawPlayAreaBorder
     ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
     ld de, 32
 SetColourLoop:
-    ld a, $02
+    ld a, $04
     ld (hl), a
     add hl, de 
     djnz SetColourLoop
@@ -61,7 +86,7 @@ SetColourLoop:
     ld hl, START_OF_ATTRIBUTE_SCREEN_MEM+$1f
     ld de, 32
 SetColourLoop2:
-    ld a, $05
+    ld a, $04
     ld (hl), a
     add hl, de 
     djnz SetColourLoop2
@@ -69,7 +94,7 @@ SetColourLoop2:
     ld b, 30 ; there's 30 columns but we only want to do the inner 30
     ld hl, $5801 ; offset to attribute memory for top row on character in from left
 SetColourLoop3:
-    ld a, $04
+    ld a, $02
     ld (hl), a
     inc hl 
     djnz SetColourLoop3
@@ -77,7 +102,7 @@ SetColourLoop3:
     ld b, 30 ; there's 30 columns but we only want to do the inner 30
     ld hl, $5ae1 ; offset to attribute memory for bottom row on character in from left
 SetColourLoop4:
-    ld a, $04
+    ld a, $02
     ld (hl), a
     inc hl 
     djnz SetColourLoop4
@@ -96,9 +121,7 @@ SetColourLoop4:
     ld de, GraphicTile1_8x8
     ld a, 30
     call DrawHorizontalBar
-    ;010T TSSS LLLC CCCC
-    ld h, %01010000     ; had to work this out in binary !!
-    ld l, %11100001
+    ld hl, $50e1
     ld de, GraphicTile1_8x8
     ld a, 30
     call DrawHorizontalBar  
@@ -162,7 +185,7 @@ Delay:
     push bc
     push af
 
-    ld b, $6f
+    ld b, $1e
 DelayLoopOuter:
     push bc
         ld b, $f0
@@ -220,6 +243,9 @@ sub $08
 ; Load the value in H
 ld h, a
 ret
+
+platform_direction:
+    defb 1
 
 ;; due to attribute drawing these can appear in reverse of what they look like here with 1 or zeros opposite
 GraphicTile1_8x8:    ;  a diamond pattern with a dot in the middle
