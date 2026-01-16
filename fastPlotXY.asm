@@ -1,10 +1,14 @@
 org $8000
 
+;; some helpful equ's
+CLS equ $0d6b
+START_OF_ATTRIBUTE_SCREEN_MEM equ $5800
+
 Main:
-    call $0d6b   ; clear screen rom routine
+    call CLS   ; clear screen rom routine using CLS equ
 
     ld b, 24
-    ld hl, $5800
+    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
     ld de, 32
 SetColourLoop:
     ld a, $02
@@ -13,7 +17,7 @@ SetColourLoop:
     djnz SetColourLoop
 
     ld b, 24
-    ld hl, $581f
+    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM+$1f
     ld de, 32
 SetColourLoop2:
     ld a, $05
@@ -21,32 +25,63 @@ SetColourLoop2:
     add hl, de 
     djnz SetColourLoop2
 
+    ld b, 30 ; there's 30 columns but we only want to do the inner 30
+    ld hl, $5801 ; offset to attribute memory for top row on character in from left
+SetColourLoop3:
+    ld a, $04
+    ld (hl), a
+    inc hl 
+    djnz SetColourLoop3
+
+    ld b, 30 ; there's 30 columns but we only want to do the inner 30
+    ld hl, $5ae1 ; offset to attribute memory for bottom row on character in from left
+SetColourLoop4:
+    ld a, $04
+    ld (hl), a
+    inc hl 
+    djnz SetColourLoop4
+
+
+
     ld hl, $4000  ; start of pixel memory
-    call DrawTheVeticalBanner
+    ld de, GraphicTile1_8x8
+    ld a, 24
+    call DrawVeticalBar
     ld hl, $401f  ; pixel address of last column
-    call DrawTheVeticalBanner
+    ld de, GraphicTile1_8x8
+    ld a, 24
+    call DrawVeticalBar
     ld hl, $4001
-    call DrawTheHorizontalBanner
+    ld de, GraphicTile1_8x8
+    ld a, 30
+    call DrawHorizontalBar
     ;010T TSSS LLLC CCCC
-    ld h, %01010000 
+    ld h, %01010000     ; had to work this out in binary !!
     ld l, %11100001
-    call DrawTheHorizontalBanner
+    ld de, GraphicTile1_8x8
+    ld a, 30
+    call DrawHorizontalBar
 EndLoop:
     jp EndLoop
 
+;; Draw a horizontal line of the value stored in 8x8 tile
+;; The 8x8 tile first location should be stored in de
+;;
+;; Uses registers:
+;;     hl - screen (pixel) memory start offset
+;;     de - memory location of the start of the 8x8 tile
+;;     a  - the number of horizontal 8x8 to draw
+;; Changes registers:
+;;     bc 
+;;     af 
 
-
-DrawTheHorizontalBanner:    
-    ld b, 30    ; number of multiples of 8 blocks to display width
+DrawHorizontalBar:    
+    ld b, a    ; number of multiples of 8 blocks to display width
 MainLoopHB1:
+    push de
     push bc
         ld b, 8
         push hl
-            ld hl, Sprite
-            push hl
-            pop de
-        pop hl
-        push hl 
 InnerLoopHB1:
             ld a, (de)
             ld (hl), a
@@ -55,22 +90,19 @@ InnerLoopHB1:
             djnz InnerLoopHB1
         pop hl
         inc l
-        pop bc
+    pop bc
+    pop de
     djnz MainLoopHB1
 ret
 
 
 
-DrawTheVeticalBanner:    
-    ld b, 24    ; number of multiples of 8 blocks to display width
+DrawVeticalBar:    
+    ld b, a    ; number of multiples of 8 blocks to display width
 MainLoop2:
+    push de
     push bc
         ld b, 8
-        push hl
-            ld hl, Sprite
-            push hl
-            pop de
-        pop hl 
 InnerLoop:
         ld a, (de)
         ld (hl), a
@@ -78,6 +110,7 @@ InnerLoop:
         inc de
         djnz InnerLoop
     pop bc
+    pop de
     djnz MainLoop2
 ret
 
@@ -144,7 +177,7 @@ sub $08
 ld h, a
 ret
 
-Sprite:
+GraphicTile1_8x8:
     defb %11100111
     defb %11011011
     defb %10111101
