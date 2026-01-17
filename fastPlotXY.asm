@@ -7,6 +7,7 @@ START_OF_ATTRIBUTE_SCREEN_MEM equ $5800
 Main:
     call CLS   ; clear screen rom routine using CLS equ
     call drawPlayAreaBorder
+    call DrawSprite24x24 ;; this is just a test at momemt till it's working properly
 
     ld hl, $4849
     ld de, GraphicTile2_8x8
@@ -127,9 +128,62 @@ SetColourLoop4:
     call DrawHorizontalBar  
     ret
 
+;;010T TSSS LLLC CCCC
+DrawSprite24x24:   ; 3 by 3 character size sprite
+    ld hl, $4804   ;;;; just somewhere in centre third of screen vertically
+    ld de, Sprite1_24x24
+    call DrawHorizontalSprite_1x1
 
+    ld hl, $4805   ;;;; just somewhere in centre third of screen vertically
+    ld de, Sprite1_24x24+8
+    call DrawHorizontalSprite_1x1
 
+    ld hl, $4806   ;;;; just somewhere in centre third of screen vertically
+    ld de, Sprite1_24x24+16
+    call DrawHorizontalSprite_1x1
+   
+    ld hl, $4824   ;;;; just somewhere in centre third of screen vertically
+    ld de, Sprite1_24x24+24
+    call DrawHorizontalSprite_1x1
 
+    ld hl, $4825   ;;;; just somewhere in centre third of screen vertically
+    ld de, Sprite1_24x24+32
+    call DrawHorizontalSprite_1x1
+
+    ld hl, $4826   ;;;; just somewhere in centre third of screen vertically
+    ld de, Sprite1_24x24+40
+    call DrawHorizontalSprite_1x1
+   
+    ld hl, $4844   ;;;; just somewhere in centre third of screen vertically
+    ld de, Sprite1_24x24+48
+    call DrawHorizontalSprite_1x1
+
+    ld hl, $4845   ;;;; just somewhere in centre third of screen vertically
+    ld de, Sprite1_24x24+56
+    call DrawHorizontalSprite_1x1
+
+    ld hl, $4846   ;;;; just somewhere in centre third of screen vertically
+    ld de, Sprite1_24x24+64
+    call DrawHorizontalSprite_1x1
+   
+ret
+
+DrawHorizontalSprite_1x1
+ld b, 8
+MainLoopHS1:
+    ld a, (de)
+    ld (hl), a
+    push af 
+    push de   
+    push bc
+        call NextScan
+    pop bc
+    pop de
+    pop af
+    
+    inc de
+    djnz MainLoopHS1
+ret
 
 ;; Draw a horizontal line of the value stored in 8x8 tile
 ;; The 8x8 tile first location should be stored in de
@@ -245,6 +299,7 @@ ld h, a
 ret
 
 platform_direction:
+
     defb 1
 
 ;; due to attribute drawing these can appear in reverse of what they look like here with 1 or zeros opposite
@@ -275,7 +330,7 @@ GraphicTile3_8x8:    ; a box empty for no attribute colour
     defb %10000001
     defb %10000001
     defb %10000001
-    defb %10000001
+    defb %11111111
     defb %11111111
 
 GraphicTileBlank_8x8:    ; a box empty for no attribute colour
@@ -287,4 +342,90 @@ GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
     defb %00000000
     defb %00000000
+
+Sprite1_24x24  
+ ; beacuse of the way the sprite is being drawn this has to be organised in memory the same way
+ ; in other words all the first column of pixels of the first 8bytes then all the second and so on
+ ; then repeated on each row of 8x8 charaters
+    defb %00011000
+    defb %11100111
+    defb %00011000
+    defb %01111110
+    defb %01111110
+    defb %11111111
+    defb %11111111
+    defb %11100111
+
+    defb %00000000
+    defb %11111111
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %11111111
+    defb %11111111
+    defb %00000000
+
+    defb %00011000
+    defb %11100111
+    defb %00011000
+    defb %01111110
+    defb %01111110
+    defb %11111111
+    defb %11111111
+    defb %11100111
+
+    defb %11100111
+    defb %01100110
+    defb %00011000
+    defb %00011000
+    defb %00011000
+    defb %00011000
+    defb %00011000
+    defb %00011000
+
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+
+
+    defb %11100111
+    defb %01100110
+    defb %00011000
+    defb %00011000
+    defb %00011000
+    defb %00011000
+    defb %00011000
+    defb %00011000
+
+    defb %00011000
+    defb %11100111
+    defb %00011000
+    defb %01111110
+    defb %01111110
+    defb %11111111
+    defb %11111111
+    defb %11100111
+
+    defb %00000000
+    defb %11111111
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %11111111
+    defb %11111111
+    defb %00000000
+
+    defb %00011000
+    defb %11100111
+    defb %00011000
+    defb %01111110
+    defb %01111110
+    defb %11111111
+    defb %11111111
+    defb %11100111
 end $8000

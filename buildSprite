@@ -1,0 +1,2 @@
+rm -f  sprite.tap
+pasmo -1 --tapbas sprite.asm sprite.tap
