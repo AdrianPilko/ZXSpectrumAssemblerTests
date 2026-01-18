@@ -65,36 +65,59 @@ DoneScanKeys:
     jr DrawSprite
 
 
-MoveSpriteUp:       ;; no limit checking yet!
+MoveSpriteUp:
+    call DrawBlank24_24      
     ld a, (SpriteYPos)
+    cp 8
+    jp z, DrawSprite
     dec a
     ld (SpriteYPos), a
     jr DrawSprite
 MoveSpriteDown:
+    call DrawBlank24_24
     ld a, (SpriteYPos)
+    cp 160
+    jp z, DrawSprite
     inc a
     ld (SpriteYPos), a
-MoveSpriteLeft:       ;; no limit checking yet!
+    jp DrawSprite
+MoveSpriteLeft:       
+    call DrawBlank24_24
     ld a, (SpriteXPos)
+    cp 1
+    jp z, DrawSprite 
     dec a
     ld (SpriteXPos), a
-    jr DrawSprite
+    jp DrawSprite
 MoveSpriteRight:
+    call DrawBlank24_24
     ld a, (SpriteXPos)
+    cp 28
+    jp z, DrawSprite
     inc a
     ld (SpriteXPos), a
 
 DrawSprite:
-    ld a, (SpriteXPos)
+    ld a, (SpriteXPos) ; for some reason, not sure why, if I do ld b, (SpritePosX) directly it just doesn't work?! same for ld c????
     ld b, a
     ld a, (SpriteYPos)
     ld c, a 
- 
+
+    ld de, Sprite1_24x24    
     call DrawSprite24x24 ;; this is just a test at momemt till it's working properly
 
     ;jp ScanTheKeyBoard
     jp ScanTheKeyBoard
 
+
+DrawBlank24_24
+    ld a, (SpriteXPos) ; for some reason, not sure why, if I do ld b, (SpritePosX) directly it just doesn't work?! same for ld c????
+    ld b, a
+    ld a, (SpriteYPos)
+    ld c, a 
+    ld de,SpriteBlank_24x24
+    call DrawSprite24x24 
+    ret
 
 
 ;; effectively commented out code to draw a moving platform
@@ -213,12 +236,13 @@ SetColourLoop4:
 ;;010T TSSS LLLC CCCC
 DrawSprite24x24:   ; 3 by 3 character size sprite
 ;; top left xy is in bc
+;; set de to sprite memory start is incremented throught the subroutine
 push bc
     ;; the xy of first row is same as called by in bc
     call GetScreenPos
     ld a, 3
     ;ld hl, $4804   ;;;; just somewhere in centre third of screen vertically
-    ld de, Sprite1_24x24
+;    ld de, Sprite1_24x24
     call DrawHorizontalSprite_3wide
 pop bc
 push bc
@@ -228,7 +252,7 @@ push bc
     call GetScreenPos
     ld a, 3
     ;ld hl, $4804   ;;;; just somewhere in centre third of screen vertically
-    ld de, Sprite1_24x24+24
+    ;ld de, Sprite1_24x24+24
     call DrawHorizontalSprite_3wide
 pop bc
     ld a, c
@@ -237,7 +261,7 @@ pop bc
     call GetScreenPos
     ld a, 3
     ;ld hl, $4804   ;;;; just somewhere in centre third of screen vertically
-    ld de, Sprite1_24x24+48
+    ;;ld de, Sprite1_24x24+48
     call DrawHorizontalSprite_3wide
 
 ret
@@ -513,6 +537,8 @@ scr_addr_table:
 	dw &50C0,&51C0,&52C0,&53C0,&54C0,&55C0,&56C0,&57C0
 	dw &50E0,&51E0,&52E0,&53E0,&54E0,&55E0,&56E0,&57E0
 
+SpriteBlank_24x24:
+    defs 8*9, 0
 
 Sprite1_24x24  
  ; beacuse of the way the sprite is being drawn this has to be organised in memory the same way
