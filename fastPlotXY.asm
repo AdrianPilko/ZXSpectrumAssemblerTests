@@ -544,90 +544,87 @@ Sprite1_24x24
  ; beacuse of the way the sprite is being drawn this has to be organised in memory the same way
  ; in other words all the first column of pixels of the first 8bytes then all the second and so on
  ; then repeated on each row of 8x8 charaters
+spriteData:
 defb %00000000
-defb %00000000   
-defb %00000100   
-defb %00001000   
-defb %11110001   
-defb %10010001   
-defb %11110000   
-defb %00010000   
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000001
+defb %00000001
+defb %00000001
+
+defb %00011000
+defb %00100100
+defb %01000010
+defb %10011001
+defb %00111100
+defb %00100100
+defb %00111100
+defb %00100100
 
 defb %00000000
-defb %11111111
 defb %00000000
 defb %00000000
-defb %10000001
-defb %10000001
-defb %00011000
-defb %00011000
-
 defb %00000000
 defb %10000000
-defb %00100000
-defb %00010000
-defb %10001111
-defb %10001001
-defb %00001111
-defb %00001000
+defb %10000000
+defb %10000000
+defb %10000000
 
-defb %00010000   
-defb %00010100   
-defb %00010100   
-defb %00010001   
-defb %00001000   
-defb %00000100   
-defb %00000011   
-defb %00000000   
+defb %00000001
+defb %00000010
+defb %00000100
+defb %00001000
+defb %10010000
+defb %10100000
+defb %11000000
+defb %11111111
 
 defb %00111100
 defb %00000000
 defb %00000000
 defb %00000000
-defb %11111111
-defb %00000000
-defb %11111111
+defb %10000001
+defb %10000001
+defb %10000001
 defb %11111111
 
-defb %00001000
-defb %00101000
-defb %00101000
-defb %10001000
-defb %00010000
+defb %10000000
+defb %01000000
 defb %00100000
+defb %00010000
+defb %00001001
+defb %00000101
+defb %00000011
+defb %11111111
+
+defb %00000011
+defb %00000000
+defb %00000001
+defb %00000010
+defb %00000001
+defb %00000000
+defb %00000010
+defb %00000000
+
+defb %11000011
+defb %00000000
+defb %01000001
+defb %10010010
+defb %00000001
+defb %10100000
+defb %00000010
+defb %01000000
+
 defb %11000000
 defb %00000000
-
-
-
-defb %00000000   
-defb %00000001   
-defb %11111111   
-defb %00000100   
-defb %00000100   
-defb %00000100   
-defb %11111111   
-defb %00000000   
-
-defb %11111111
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %11111111
-defb %00000000
-
-defb %00000000
+defb %01000000
 defb %10000000
-defb %11111111
-defb %00100000
-defb %00100000
-defb %00100000
-defb %11111111
+defb %01000000
 defb %00000000
-
-
+defb %01000000
+defb %00000000
 
 
 end $8000
