@@ -88,6 +88,8 @@ MoveSpriteLeft:
     jp z, DrawSprite 
     dec a
     ld (SpriteXPos), a
+    ld a, 1
+    ld (movedLeftFlag), a
     jp DrawSprite
 MoveSpriteRight:
     call DrawBlank24_24
@@ -96,17 +98,64 @@ MoveSpriteRight:
     jp z, DrawSprite
     inc a
     ld (SpriteXPos), a
+    ld a, 1
+    ld (movedRightFlag), a
 
 DrawSprite:
     ld a, (SpriteXPos) ; for some reason, not sure why, if I do ld b, (SpritePosX) directly it just doesn't work?! same for ld c????
     ld b, a
     ld a, (SpriteYPos)
     ld c, a 
+    ld de, spriteDataPerson1 
 
-    ld de, Sprite1_24x24    
-    call DrawSprite24x24 ;; this is just a test at momemt till it's working properly
-
+    ld a,(movedRightFlag)
+    cp 1
+    jp nz, checkMoveLeft
+    ld a, (spaceShipFrame)
+    cp 1
+    jp z, skipLoadSpaceShip2
+    ld de, spriteDataPerson2 
+    ld a, 1
+    ld (spaceShipFrame), a
+    jp drawSpaceShip
+skipLoadSpaceShip2:
+    xor a
+    ld (spaceShipFrame), a   
+    ld de, spriteDataPerson1    
+    jp drawSpaceShip
+checkMoveLeft:
+    ld a,(movedLeftFlag)
+    cp 1
+    jp nz, drawSpaceShip
+    ld a, (spaceShipFrame)
+    cp 1
+    jp z, skipLoadSpaceShip1_Left
+    ld de, spriteDataPerson1_Left 
+    ld a, 1
+    ld (spaceShipFrame), a
+    jp drawSpaceShip
+skipLoadSpaceShip1_Left:
+    xor a
+    ld (spaceShipFrame), a   
+    ld de, spriteDataPerson2_Left    
+    jp drawSpaceShip
+drawSpaceShip:
+    call DrawSprite24x24 ;; this is just a test at momemt till it's working properlDelay
     ;jp ScanTheKeyBoard
+    
+    ld a,(movedRightFlag)
+    cp 1
+    jp z, EndOfDrawLoop
+checkForDelayLeft:
+    ld a,(movedLeftFlag)
+    cp 1
+    jp z, EndOfDrawLoop
+    call Delay
+EndOfDrawLoop:
+    xor a
+    ld (movedRightFlag), a
+    ld (movedLeftFlag), a
+    call Delay
     jp ScanTheKeyBoard
 
 
@@ -356,7 +405,7 @@ Delay:
     push bc
     push af
 
-    ld b, $1e
+    ld b, $4e
 DelayLoopOuter:
     push bc
         ld b, $f0
@@ -509,7 +558,12 @@ SpriteXPos:
     defb 10
 SpriteYPos:
     defb 30
-
+spaceShipFrame:
+    defb 0
+movedRightFlag:
+    defb 0
+movedLeftFlag:
+    defb 0
 
 scr_addr_table:
 	dw &4000,&4100,&4200,&4300,&4400,&4500,&4600,&4700
@@ -540,11 +594,352 @@ scr_addr_table:
 SpriteBlank_24x24:
     defs 8*9, 0
 
-Sprite1_24x24  
+spriteDataPerson1:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00011111
+defb %00100001
+defb %01010000
+defb %01010001
+defb %00100001
+defb %00011110
+defb %00111111
+defb %01100001
+
+defb %00000000
+defb %10000000
+defb %11000000
+defb %01100000
+defb %10000000
+defb %00000000
+defb %00000000
+defb %11000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %01100010
+defb %01010010
+defb %01010010
+defb %01010100
+defb %10010100
+defb %10011100
+defb %10011100
+defb %01000001
+
+defb %01000000
+defb %00100000
+defb %00100000
+defb %00100000
+defb %00100000
+defb %01000000
+defb %10000000
+defb %00000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00100010
+defb %00010010
+defb %00010001
+defb %00010010
+defb %00010010
+defb %00010010
+defb %00010111
+defb %00111111
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %10000000
+defb %11000000
+
+
+spriteDataPerson2:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00011111
+defb %00100001
+defb %01010000
+defb %01010001
+defb %00100001
+defb %00011110
+defb %00111111
+defb %01100001
+
+defb %00000000
+defb %10000000
+defb %11000000
+defb %01100000
+defb %10000000
+defb %00000000
+defb %00000000
+defb %11000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %01100010
+defb %01010010
+defb %01010010
+defb %01010010
+defb %10001001
+defb %10000100
+defb %10000011
+defb %01000001
+
+defb %01000000
+defb %00100000
+defb %00100000
+defb %00100000
+defb %00100000
+defb %11000000
+defb %10000000
+defb %00000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00100010
+defb %00100010
+defb %00100011
+defb %00100110
+defb %00100101
+defb %00100100
+defb %01111000
+defb %01111111
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %10000000
+defb %00100000
+defb %10010000
+defb %01011100
+defb %00111111
+
+
+
+
+spriteDataPerson1_Left:
+defb %00000011
+defb %00000001
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %11111100
+defb %11101000
+defb %01001000
+defb %01001000
+defb %01001000
+defb %10001000
+defb %01001000
+defb %01000100
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000000
+defb %00000001
+defb %00000010
+defb %00000100
+defb %00000100
+defb %00000100
+defb %00000100
+defb %00000010
+
+defb %10000010
+defb %00111001
+defb %00111001
+defb %00101001
+defb %00101010
+defb %01001010
+defb %01001010
+defb %01000110
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000011
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000110
+defb %00000011
+defb %00000001
+defb %00000000
+
+defb %10000110
+defb %11111100
+defb %01111000
+defb %10000100
+defb %10001010
+defb %00001010
+defb %10000100
+defb %11111000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+
+
+spriteDataPerson2_Left:
+defb %11111100
+defb %00111010
+defb %00001001
+defb %00000100
+defb %00000001
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %11111110
+defb %00011110
+defb %00100100
+defb %10100100
+defb %01100100
+defb %11000100
+defb %01000100
+defb %01000100
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000000
+defb %00000001
+defb %00000011
+defb %00000100
+defb %00000100
+defb %00000100
+defb %00000100
+defb %00000010
+
+defb %10000010
+defb %11000001
+defb %00100001
+defb %10010001
+defb %01001010
+defb %01001010
+defb %01001010
+defb %01000110
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000011
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000110
+defb %00000011
+defb %00000001
+defb %00000000
+
+defb %10000110
+defb %11111100
+defb %01111000
+defb %10000100
+defb %10001010
+defb %00001010
+defb %10000100
+defb %11111000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+
+
+
+
+
+
+
+
+SpaceShip1:  
  ; beacuse of the way the sprite is being drawn this has to be organised in memory the same way
  ; in other words all the first column of pixels of the first 8bytes then all the second and so on
  ; then repeated on each row of 8x8 charaters
-spriteData:
 defb %00000000
 defb %00000000
 defb %00000000
@@ -625,6 +1020,90 @@ defb %01000000
 defb %00000000
 defb %01000000
 defb %00000000
+
+
+SpaceShip2:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000001
+defb %00000001
+defb %00000001
+
+defb %00011000
+defb %00100100
+defb %01000010
+defb %10011001
+defb %00111100
+defb %00100100
+defb %00111100
+defb %00100100
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %10000000
+defb %10000000
+defb %10000000
+defb %10000000
+
+defb %00000001
+defb %00000010
+defb %00000100
+defb %00001000
+defb %10010000
+defb %10100000
+defb %11000000
+defb %11111111
+
+defb %00111100
+defb %00000000
+defb %00000000
+defb %00000000
+defb %10000001
+defb %10000001
+defb %10000001
+defb %11111111
+
+defb %10000000
+defb %01000000
+defb %00100000
+defb %00010000
+defb %00001001
+defb %00000101
+defb %00000011
+defb %11111111
+
+defb %00000011
+defb %00000000
+defb %00000001
+defb %00000000
+defb %00000001
+defb %00000000
+defb %00000001
+defb %00000000
+
+defb %11000011
+defb %00000000
+defb %01000001
+defb %10100010
+defb %00000100
+defb %10100001
+defb %01000000
+defb %01010001
+
+defb %11000000
+defb %00000000
+defb %00100000
+defb %10000000
+defb %10000000
+defb %00000000
+defb %01000000
+defb %00100000
+
 
 
 end $8000
