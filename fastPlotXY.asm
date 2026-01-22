@@ -68,11 +68,13 @@ DoneScanKeys:
 MoveSpriteUp:
     call DrawBlank24_24      
     ld a, (SpriteYPos)
-    cp 8
+    cp 9
     jp z, DrawSprite
     dec a
     ld (SpriteYPos), a
-    jr DrawSprite
+    ld a, 16
+    ld (jumpCount), a
+    jp DrawSprite
 MoveSpriteDown:
     call DrawBlank24_24
     ld a, (SpriteYPos)
@@ -106,8 +108,26 @@ DrawSprite:
     ld b, a
     ld a, (SpriteYPos)
     ld c, a 
-    ld de, spriteDataPerson1 
+    
+    ;; do the jump
+    ld a,(jumpCount) 
+    cp 0
+    jp z, skipJump
+    dec a 
+    ld (jumpCount), a
+    dec c
+    ld a, c
+    cp 8
+    jp z, skipJump    
+    ld (SpriteYPos), a
+    push bc
+    call DelaySmall 
+    call DrawBlank24_24      
+    pop bc
+skipJump:    
+    ld de, spriteDataPerson1
 
+    
     ld a,(movedRightFlag)
     cp 1
     jp nz, checkMoveLeft
@@ -145,17 +165,19 @@ drawSpaceShip:
     
     ld a,(movedRightFlag)
     cp 1
-    jp z, EndOfDrawLoop
+    jp nz, checkForDelayLeft
+    jp DelayLeftRight
 checkForDelayLeft:
     ld a,(movedLeftFlag)
     cp 1
-    jp z, EndOfDrawLoop
+    jp nz, EndOfDrawLoop
+DelayLeftRight:
     call Delay
 EndOfDrawLoop:
     xor a
     ld (movedRightFlag), a
     ld (movedLeftFlag), a
-    call Delay
+;;;;;;;;;;;; Loop back to scanning keyboard
     jp ScanTheKeyBoard
 
 
@@ -401,11 +423,31 @@ InnerLoop:
     djnz MainLoop2
 ret
 
+DelaySmall:
+    push bc
+    push af
+
+    ld b, $1e
+DelayLoopOuterS:
+    push bc
+        ld b, $d0
+DelayLoopS:
+        ld a, 4
+        djnz DelayLoopS 
+    pop bc
+    djnz DelayLoopOuterS
+
+    pop af
+    pop bc
+ret
+
+
+
 Delay:
     push bc
     push af
 
-    ld b, $4e
+    ld b, $2e
 DelayLoopOuter:
     push bc
         ld b, $f0
@@ -563,6 +605,8 @@ spaceShipFrame:
 movedRightFlag:
     defb 0
 movedLeftFlag:
+    defb 0
+jumpCount:
     defb 0
 
 scr_addr_table:
