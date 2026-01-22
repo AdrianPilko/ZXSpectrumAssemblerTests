@@ -66,7 +66,7 @@ DoneScanKeys:
 
 
 MoveSpriteUp:
-    call DrawBlank24_24      
+    ;call DrawBlank24_24      
     ld a, (SpriteYPos)
     cp 9
     jp z, DrawSprite
@@ -113,6 +113,12 @@ DrawSprite:
     ld a,(jumpCount) 
     cp 0
     jp z, skipJump
+    push af 
+    push bc
+    inc c
+    call DrawBlank24_24      
+    pop bc
+    pop af
     dec a 
     ld (jumpCount), a
     dec c
@@ -122,7 +128,6 @@ DrawSprite:
     ld (SpriteYPos), a
     push bc
     call DelaySmall 
-    call DrawBlank24_24      
     pop bc
 skipJump:    
     ld de, spriteDataPerson1
