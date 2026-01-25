@@ -178,7 +178,7 @@ checkSPCount8:
 ReallyDrawSprite:
    ; call DrawSprite24x24 ;; this is just a test at momemt till it's working properlDelay
     call DrawSprite8x24
-    call DelayNano
+    ;call DelayNano
 ;;;;;;;;;;;; Loop back to scanning keyboard
     ret
 
@@ -454,17 +454,9 @@ ret
 DelayNano:
     push bc
     push af
-
-    ld b, $02
-DelayLoopOuterDN:
-    push bc
-        ld b, $1f
+        ld b, $02
 DelayLoopDN:
-        ld a, 4
         djnz DelayLoopDN
-    pop bc
-    djnz DelayLoopOuterDN
-
     pop af
     pop bc
 ret
