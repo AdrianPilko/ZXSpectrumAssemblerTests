@@ -13,11 +13,10 @@ Main:
     ld (SpriteYPos), a
     call CLS   ; clear screen rom routine using CLS equ
     call drawPlayAreaBorder
-
-
+    ld hl, $5050  ;; start address of platform at left end
+    ld (platformLocation), hl
+    
     ;; read keys and make to allow what for with the sprite shall move    
-
-
 
 MainLoop:
     halt                ; 1. Sync with the TV beam (Start of frame)
@@ -71,42 +70,35 @@ DoneScanKeys:
     jr nz, MoveSpriteLeft
     bit $03, d
     jr nz, MoveSpriteRight
-    jr DrawSprite
+    jp DrawSprite
 
 
 MoveSpriteUp:
-    call DrawBlank8_24      
+    call DrawBlank8_24
     ld a, (SpriteYPos)
-    cp 9
-    jp z, DrawSprite
     dec a
-    ld (SpriteYPos), a
-    ld a, 16
-    ld (jumpCount), a
-    ld a, 1
-    ld (jumpFlag), a
+    cp 9
+    jp z, DrawSprite 
+    ld (SpriteYPos),a
     jp DrawSprite
 MoveSpriteDown:
     call DrawBlank8_24
     ld a, (SpriteYPos)
-    cp 160
-    jp z, DrawSprite
-    inc a
-    ld (SpriteYPos), a
+    inc a 
+    cp 176
+    jp z, DrawSprite 
+    ld (SpriteYPos),a
     jp DrawSprite
 MoveSpriteLeft:       
     call DrawBlank8_24
     ld a, (SpriteXPos)
-    cp 1
+    dec a 
+    cp 0
     jp z, DrawSprite 
-    dec a
-    ld (SpriteXPos), a
-    ld a, 1
-    ld (movedLeftFlag), a
+    ld (SpriteXPos),a
     jp DrawSprite
 MoveSpriteRight:
     call DrawBlank8_24
-    
     ld a, (SpriteFrameCounter)
     inc a
     ld (SpriteFrameCounter), a    
@@ -114,18 +106,17 @@ MoveSpriteRight:
     jp z, resetFramCountAndIncX
     jp DrawSprite
 resetFramCountAndIncX:
+    ld a, (SpriteXPos)
+    inc a
+    cp 29
+    jp z, DrawSprite 
+    ld (SpriteXPos),a    
     xor a 
     ld (SpriteFrameCounter), a
-    ld a, (SpriteXPos)
-    cp 28
-    jp z, DrawSprite
-    inc a
-    ld (SpriteXPos), a
-    ld a, 1
-    ld (movedRightFlag), a
-
     
-DrawSprite:
+DrawSprite:    
+
+ActuallyDrawSprite:
     ld a, (SpriteXPos) ; have todo this ld a,(nn) then ld b, a
     ld b, a
     ld a, (SpriteYPos)
@@ -179,8 +170,65 @@ ReallyDrawSprite:
    ; call DrawSprite24x24 ;; this is just a test at momemt till it's working properlDelay
     call DrawSprite8x24
     ;call DelayNano
-;;;;;;;;;;;; Loop back to scanning keyboard
+
+;; effectively commented out code to draw a moving platform
+MovingPlatformLoop:
+    ;push af
+        ld a, 3
+        ld hl,(platformLocation)
+        ld de, GraphicTile3_8x8
+        push hl
+            call DrawHorizontalBar
+        ; we need to print a blank block at each end
+        pop hl
+        push hl
+            dec l
+            ld de, GraphicTileBlank_8x8
+            ld a, 1
+            push hl
+                call DrawHorizontalBar
+            pop hl
+            ;; becasue the moving platform is length 3 inc l by 4 to get to end
+            inc l
+            inc l
+            inc l
+            inc l
+            ld de, GraphicTileBlank_8x8
+            ld a, 1
+            call DrawHorizontalBar
+        pop hl
+        ld (platformLocation), hl
+    ;; determine direction platforms moving
+    ld a, (platform_direction)
+    cp 0
+    jp z, platform_moves_left
+platform_moves_right
+    inc l
+    inc l ;; this avoids a second jump platform_moves_left always decs, probably faster
+platform_moves_left
+    dec l
+    ;pop af
+    ld a,(platformCount)
+    inc a
+    cp 10
+    jp z, resetPlatform
+    ld (platformCount), a
+    jp EndLoopMovingPlatform    
+resetPlatform:
+    ld hl, $5050            ;; for now move it instantly back, later make it sweep back
+    xor a                   ;; a storing the numbner of times moved
+    ld (platformCount), a
+    ; toggle the left right flag in  platform_direction
+    ld a, (platform_direction)
+    xor %00000001
+    ld (platform_direction), a 
+EndLoopMovingPlatform    
+    ld (platformLocation),hl
     ret
+
+;; should never get here
+EndLoop:
+    jp EndLoop
 
 
 DrawBlank24_24
@@ -202,63 +250,6 @@ DrawBlank8_24
     ret
 
 
-;; effectively commented out code to draw a moving platform
-MovingPlatformLoop:
-    push af
-        ld a, 3
-        push hl
-            ld de, GraphicTile3_8x8
-            call DrawHorizontalBar
-            ; we need to print a blank block at each end
-            pop hl
-            push hl
-                dec l
-                ld de, GraphicTileBlank_8x8
-                ld a, 1
-                push hl
-                    call DrawHorizontalBar
-                pop hl
-                ;; becasue the moving platform is length 3 inc l by 4 to get to end
-                inc l
-                inc l
-                inc l
-                inc l
-                ld de, GraphicTileBlank_8x8
-                ld a, 1
-                call DrawHorizontalBar
-
-            call Delay
-        pop hl
-    
-    ;; determine direction platforms moving
-    ld a, (platform_direction)
-    cp 0
-    jp z, platform_moves_left
-platform_moves_right
-    inc l
-    inc l ;; this avoids a second jump platform_moves_left always decs, probably faster
-platform_moves_left
-    dec l
-    pop af
-    inc a
-    cp 10
-    jp z, resetPlatform
-    jp EndLoopMovingPlatform    
-resetPlatform:
-    ;ld hl, $5050            ;; for now move it instantly back, later make it sweep back
-    xor a                   ;; a storing the numbner of times moved
-    push af 
-    ; toggle the left right flag in  platform_direction
-    ld a, (platform_direction)
-    xor %00000001
-    ld (platform_direction), a 
-    pop af
-EndLoopMovingPlatform    
-    jp MovingPlatformLoop
-
-;; might never get here
-EndLoop:
-    jp EndLoop
 
 drawPlayAreaBorder
     ld b, 24
@@ -655,6 +646,11 @@ GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
 
 
+
+SpriteMoveX:
+    defb 0
+SpriteMoveY:
+    defb 0
 SpriteXPos:
     defb 10
 SpriteYPos:
@@ -669,6 +665,11 @@ jumpCount:
     defb 0
 jumpFlag:
     defb 0
+platformLocation
+    defW $5050
+platformCount
+    defb 0
+
 
 scr_addr_table:
 	dw &4000,&4100,&4200,&4300,&4400,&4500,&4600,&4700
