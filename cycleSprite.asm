@@ -11,6 +11,8 @@ Main:
     ld (SpriteXPos), a
     ld a, 30
     ld (SpriteYPos), a
+    call CLS   ; clear screen rom routine using CLS equ
+    call drawPlayAreaBorder
 
 
     ;; read keys and make to allow what for with the sprite shall move    
@@ -176,7 +178,7 @@ checkSPCount8:
 ReallyDrawSprite:
    ; call DrawSprite24x24 ;; this is just a test at momemt till it's working properlDelay
     call DrawSprite8x24
-    call DelayTiny
+    call DelayNano
 ;;;;;;;;;;;; Loop back to scanning keyboard
     ret
 
@@ -280,7 +282,7 @@ SetColourLoop2:
     ld b, 30 ; there's 30 columns but we only want to do the inner 30
     ld hl, $5801 ; offset to attribute memory for top row on character in from left
 SetColourLoop3:
-    ld a, $02
+    ld a, $04
     ld (hl), a
     inc hl 
     djnz SetColourLoop3
@@ -288,7 +290,7 @@ SetColourLoop3:
     ld b, 30 ; there's 30 columns but we only want to do the inner 30
     ld hl, $5ae1 ; offset to attribute memory for bottom row on character in from left
 SetColourLoop4:
-    ld a, $02
+    ld a, $04
     ld (hl), a
     inc hl 
     djnz SetColourLoop4
@@ -448,6 +450,25 @@ InnerLoop:
     pop de
     djnz MainLoop2
 ret
+
+DelayNano:
+    push bc
+    push af
+
+    ld b, $02
+DelayLoopOuterDN:
+    push bc
+        ld b, $1f
+DelayLoopDN:
+        ld a, 4
+        djnz DelayLoopDN
+    pop bc
+    djnz DelayLoopOuterDN
+
+    pop af
+    pop bc
+ret
+
 
 DelayTiny:
     push bc
