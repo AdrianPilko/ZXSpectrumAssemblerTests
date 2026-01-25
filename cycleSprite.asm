@@ -6,24 +6,31 @@ START_OF_ATTRIBUTE_SCREEN_MEM equ $5800
 
 Main:
     call CLS   ; clear screen rom routine using CLS equ
-    call drawPlayAreaBorder
-
-    ld hl, $4849
-    ld de, GraphicTile2_8x8
-    ld a, 12
-    call DrawHorizontalBar
-
 
     ld a, 10
     ld (SpriteXPos), a
     ld a, 30
     ld (SpriteYPos), a
 
-    ;ld hl, $5050  ;; start address of platform at left end
-    ;xor a
-
 
     ;; read keys and make to allow what for with the sprite shall move    
+
+
+
+MainLoop:
+    halt                ; 1. Sync with the TV beam (Start of frame)
+    
+    ld  a, 2             ; 2. Set color to RED (indicates processing start)
+    out ($FE), A        ; Port $FE (254) controls the border
+
+    call ScanTheKeyBoard      ; 3. Run your main program logic here
+
+    ld a, 0             ; 4. Set color to BLACK (indicates processing end)
+    out ($FE), A
+
+    ; Any remaining space in the border is "idle" time
+    jp MainLoop
+
 ScanTheKeyBoard:
 ScanKey_A:
     ld d, $00
@@ -51,8 +58,8 @@ ScanKey_P:
     jr nz, DoneScanKeys
     set $03, d    
 
+DoneScanKeys: 
 
-DoneScanKeys:       
     ; check if d bit zero set
     bit $00, d
     jr nz, MoveSpriteUp
@@ -66,7 +73,7 @@ DoneScanKeys:
 
 
 MoveSpriteUp:
-    ;call DrawBlank24_24      
+    call DrawBlank8_24      
     ld a, (SpriteYPos)
     cp 9
     jp z, DrawSprite
@@ -78,7 +85,7 @@ MoveSpriteUp:
     ld (jumpFlag), a
     jp DrawSprite
 MoveSpriteDown:
-    call DrawBlank24_24
+    call DrawBlank8_24
     ld a, (SpriteYPos)
     cp 160
     jp z, DrawSprite
@@ -86,7 +93,7 @@ MoveSpriteDown:
     ld (SpriteYPos), a
     jp DrawSprite
 MoveSpriteLeft:       
-    call DrawBlank24_24
+    call DrawBlank8_24
     ld a, (SpriteXPos)
     cp 1
     jp z, DrawSprite 
@@ -96,7 +103,17 @@ MoveSpriteLeft:
     ld (movedLeftFlag), a
     jp DrawSprite
 MoveSpriteRight:
-    call DrawBlank24_24
+    call DrawBlank8_24
+    
+    ld a, (SpriteFrameCounter)
+    inc a
+    ld (SpriteFrameCounter), a    
+    cp 8
+    jp z, resetFramCountAndIncX
+    jp DrawSprite
+resetFramCountAndIncX:
+    xor a 
+    ld (SpriteFrameCounter), a
     ld a, (SpriteXPos)
     cp 28
     jp z, DrawSprite
@@ -105,87 +122,63 @@ MoveSpriteRight:
     ld a, 1
     ld (movedRightFlag), a
 
+    
 DrawSprite:
-    ld a, (SpriteXPos) ; for some reason, not sure why, if I do ld b, (SpritePosX) directly it just doesn't work?! same for ld c????
+    ld a, (SpriteXPos) ; have todo this ld a,(nn) then ld b, a
     ld b, a
     ld a, (SpriteYPos)
     ld c, a 
-    
-    ;; do the jump
-    ld a,(jumpCount) 
-    cp 0
-    jp z, skipJump
-    push af 
-    push bc
-    inc c
-    call DrawBlank24_24      
-    pop bc
-    pop af
-    dec a 
-    ld (jumpCount), a
-    dec c
-    ld a, c
-    cp 8
-    jp z, skipJump    
-    ld (SpriteYPos), a
-    push bc
-    call DelaySmall 
-    pop bc
-skipJump:    
-    ld de, spriteDataPerson1
 
-    
-    ld a,(movedRightFlag)
+    ld de, spriteData_1
+    ld a, (SpriteFrameCounter)
     cp 1
-    jp nz, checkMoveLeft
-    ld a, (spaceShipFrame)
-    cp 1
-    jp z, skipLoadSpaceShip2
-    ld de, spriteDataPerson2 
-    ld a, 1
-    ld (spaceShipFrame), a
-    jp drawSpaceShip
-skipLoadSpaceShip2:
+    jp nz, checkSPCount1
+    ld de, spriteData_1
+    jp ReallyDrawSprite
+checkSPCount1: 
+    cp 2
+    jp nz, checkSPCount2
+    ld de, spriteData_2
+    jp ReallyDrawSprite
+checkSPCount2: 
+    cp 3
+    jp nz, checkSPCount3
+    ld de, spriteData_3
+    jp ReallyDrawSprite
+checkSPCount3: 
+    cp 4
+    jp nz, checkSPCount4
+    ld de, spriteData_4
+    jp ReallyDrawSprite
+checkSPCount4: 
+    cp 5
+    jp nz, checkSPCount5
+    ld de, spriteData_5
+    jp ReallyDrawSprite
+checkSPCount5: 
+    cp 6
+    jp nz, checkSPCount6
+    ld de, spriteData_6
+    jp ReallyDrawSprite
+checkSPCount6: 
+    cp 7
+    jp nz, checkSPCount7
+    ld de, spriteData_7
+    jp ReallyDrawSprite
+checkSPCount7: 
+    cp 7
+    jp nz, checkSPCount8
+    ld de, spriteData_8
+    jp ReallyDrawSprite
+checkSPCount8: 
     xor a
-    ld (spaceShipFrame), a   
-    ld de, spriteDataPerson1    
-    jp drawSpaceShip
-checkMoveLeft:
-    ld a,(movedLeftFlag)
-    cp 1
-    jp nz, drawSpaceShip
-    ld a, (spaceShipFrame)
-    cp 1
-    jp z, skipLoadSpaceShip1_Left
-    ld de, spriteDataPerson1_Left 
-    ld a, 1
-    ld (spaceShipFrame), a
-    jp drawSpaceShip
-skipLoadSpaceShip1_Left:
-    xor a
-    ld (spaceShipFrame), a   
-    ld de, spriteDataPerson2_Left    
-    jp drawSpaceShip
-drawSpaceShip:
-    call DrawSprite24x24 ;; this is just a test at momemt till it's working properlDelay
-    ;jp ScanTheKeyBoard
-    
-    ld a,(movedRightFlag)
-    cp 1
-    jp nz, checkForDelayLeft
-    jp DelayLeftRight
-checkForDelayLeft:
-    ld a,(movedLeftFlag)
-    cp 1
-    jp nz, EndOfDrawLoop
-DelayLeftRight:
-    call Delay
-EndOfDrawLoop:
-    xor a
-    ld (movedRightFlag), a
-    ld (movedLeftFlag), a
+    ld (SpriteFrameCounter), a
+ReallyDrawSprite:
+   ; call DrawSprite24x24 ;; this is just a test at momemt till it's working properlDelay
+    call DrawSprite8x24
+    call DelayTiny
 ;;;;;;;;;;;; Loop back to scanning keyboard
-    jp ScanTheKeyBoard
+    ret
 
 
 DrawBlank24_24
@@ -195,6 +188,15 @@ DrawBlank24_24
     ld c, a 
     ld de,SpriteBlank_24x24
     call DrawSprite24x24 
+    ret
+
+DrawBlank8_24
+    ld a, (SpriteXPos) ; for some reason, not sure why, if I do ld b, (SpritePosX) directly it just doesn't work?! same for ld c????
+    ld b, a
+    ld a, (SpriteYPos)
+    ld c, a 
+    ld de,SpriteBlank_24x24
+    call DrawSprite8x24 
     ret
 
 
@@ -310,6 +312,23 @@ SetColourLoop4:
     ld a, 30
     call DrawHorizontalBar  
     ret
+
+
+;;010T TSSS LLLC CCCC
+DrawSprite8x24:   ; 1 by 3 character size sprite
+;; top left xy is in bc
+;; set de to sprite memory start is incremented throught the subroutine
+    ;; the xy of first row is same as called by in bc
+    call GetScreenPos
+    ld a, 3
+    ;ld hl, $4804   ;;;; just somewhere in centre third of screen vertically
+;    ld de, Sprite1_24x24
+    call DrawHorizontalSprite_3wide
+ret
+
+
+
+
 
 ;;010T TSSS LLLC CCCC
 DrawSprite24x24:   ; 3 by 3 character size sprite
@@ -429,6 +448,26 @@ InnerLoop:
     pop de
     djnz MainLoop2
 ret
+
+DelayTiny:
+    push bc
+    push af
+
+    ld b, $08
+DelayLoopOuterDS:
+    push bc
+        ld b, $f2
+DelayLoopDS:
+        ld a, 4
+        djnz DelayLoopDS 
+    pop bc
+    djnz DelayLoopOuterDS
+
+    pop af
+    pop bc
+ret
+
+
 
 DelaySmall:
     push bc
@@ -607,7 +646,7 @@ SpriteXPos:
     defb 10
 SpriteYPos:
     defb 30
-spaceShipFrame:
+SpriteFrameCounter:
     defb 0
 movedRightFlag:
     defb 0
@@ -647,7 +686,7 @@ scr_addr_table:
 SpriteBlank_24x24:
     defs 8*9, 0
 
-spriteDataPerson1:
+spriteData_1:
 defb %00000000
 defb %00000000
 defb %00000000
@@ -657,266 +696,305 @@ defb %00000000
 defb %00000000
 defb %00000000
 
-defb %00011111
-defb %00100001
-defb %01010000
-defb %01010001
-defb %00100001
-defb %00011110
-defb %00111111
-defb %01100001
-
-defb %00000000
-defb %10000000
-defb %11000000
-defb %01100000
-defb %10000000
-defb %00000000
-defb %00000000
-defb %11000000
-
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-
-defb %01100010
-defb %01010010
-defb %01010010
-defb %01010100
-defb %10010100
-defb %10011100
-defb %10011100
-defb %01000001
-
-defb %01000000
-defb %00100000
-defb %00100000
-defb %00100000
-defb %00100000
-defb %01000000
-defb %10000000
-defb %00000000
-
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-
-defb %00100010
-defb %00010010
-defb %00010001
-defb %00010010
-defb %00010010
-defb %00010010
-defb %00010111
-defb %00111111
-
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %10000000
-defb %11000000
-
-
-spriteDataPerson2:
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-
-defb %00011111
-defb %00100001
-defb %01010000
-defb %01010001
-defb %00100001
-defb %00011110
-defb %00111111
-defb %01100001
-
-defb %00000000
-defb %10000000
-defb %11000000
-defb %01100000
-defb %10000000
-defb %00000000
-defb %00000000
-defb %11000000
-
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-
-defb %01100010
-defb %01010010
-defb %01010010
-defb %01010010
-defb %10001001
-defb %10000100
-defb %10000011
-defb %01000001
-
-defb %01000000
-defb %00100000
-defb %00100000
-defb %00100000
-defb %00100000
-defb %11000000
-defb %10000000
-defb %00000000
-
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-
-defb %00100010
-defb %00100010
-defb %00100011
-defb %00100110
-defb %00100101
+defb %00011000
+defb %00011000
+defb %00011000
 defb %00100100
-defb %01111000
+defb %01011010
+defb %10000001
+defb %11111111
+defb %00100100
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+spriteData_2:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00001100
+defb %00001100
+defb %00001100
+defb %00010010
+defb %00101101
+defb %01000000
 defb %01111111
+defb %00010010
 
 defb %00000000
 defb %00000000
 defb %00000000
+defb %00000000
+defb %00000000
 defb %10000000
+defb %10000000
+defb %00000000
+
+
+
+
+
+
+
+spriteData_3:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000110
+defb %00000110
+defb %00000110
+defb %00001001
+defb %00010110
 defb %00100000
-defb %10010000
-defb %01011100
 defb %00111111
-
-
-
-
-spriteDataPerson1_Left:
-defb %00000011
-defb %00000001
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-
-defb %11111100
-defb %11101000
-defb %01001000
-defb %01001000
-defb %01001000
-defb %10001000
-defb %01001000
-defb %01000100
-
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-
-defb %00000000
-defb %00000001
-defb %00000010
-defb %00000100
-defb %00000100
-defb %00000100
-defb %00000100
-defb %00000010
-
-defb %10000010
-defb %00111001
-defb %00111001
-defb %00101001
-defb %00101010
-defb %01001010
-defb %01001010
-defb %01000110
-
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-
-defb %00000011
-defb %00000000
-defb %00000000
-defb %00000001
-defb %00000110
-defb %00000011
-defb %00000001
-defb %00000000
-
-defb %10000110
-defb %11111100
-defb %01111000
-defb %10000100
-defb %10001010
-defb %00001010
-defb %10000100
-defb %11111000
-
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-
-
-
-spriteDataPerson2_Left:
-defb %11111100
-defb %00111010
 defb %00001001
-defb %00000100
-defb %00000001
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %10000000
+defb %01000000
+defb %11000000
+defb %00000000
+
+
+
+
+
+
+
+spriteData_4:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
 defb %00000000
 defb %00000000
 defb %00000000
 
+defb %00000011
+defb %00000011
+defb %00000011
+defb %00000100
+defb %00001011
+defb %00010000
+defb %00011111
+defb %00000100
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %10000000
+defb %01000000
+defb %00100000
+defb %11100000
+defb %10000000
+
+
+
+
+
+
+
+spriteData_5:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000001
+defb %00000001
+defb %00000001
+defb %00000010
+defb %00000101
+defb %00001000
+defb %00001111
+defb %00000010
+
+defb %10000000
+defb %10000000
+defb %10000000
+defb %01000000
+defb %10100000
+defb %00010000
+defb %11110000
+defb %01000000
+
+
+
+
+
+
+
+spriteData_6:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000010
+defb %00000100
+defb %00000111
+defb %00000001
+
+defb %11000000
+defb %11000000
+defb %11000000
+defb %00100000
+defb %11010000
+defb %00001000
+defb %11111000
+defb %00100000
+
+
+
+
+
+
+
+spriteData_7:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000010
+defb %00000011
+defb %00000000
+
+defb %01100000
+defb %01100000
+defb %01100000
+defb %10010000
+defb %01101000
+defb %00000100
+defb %11111100
+defb %10010000
+
+
+
+
+
+
+
+spriteData_8:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000001
+defb %00000000
+
+defb %00110000
+defb %00110000
+defb %00110000
+defb %01001000
+defb %10110100
+defb %00000010
 defb %11111110
-defb %00011110
+defb %01001000
+
+
+
+
+
+
+
+spriteData_9:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00011000
+defb %00011000
+defb %00011000
 defb %00100100
-defb %10100100
-defb %01100100
-defb %11000100
-defb %01000100
-defb %01000100
+defb %01011010
+defb %10000001
+defb %11111111
+defb %00100100
+
+
+
+
+
+
+
+spriteData_10:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %10000000
+defb %10000000
+defb %00000000
 
 defb %00000000
 defb %00000000
@@ -927,50 +1005,132 @@ defb %00000000
 defb %00000000
 defb %00000000
 
-defb %00000000
-defb %00000001
-defb %00000011
-defb %00000100
-defb %00000100
-defb %00000100
-defb %00000100
-defb %00000010
+defb %00001100
+defb %00001100
+defb %00001100
+defb %00010010
+defb %00101101
+defb %01000000
+defb %01111111
+defb %00010010
 
-defb %10000010
-defb %11000001
-defb %00100001
-defb %10010001
-defb %01001010
-defb %01001010
-defb %01001010
-defb %01000110
 
+
+
+
+
+
+spriteData_11:
 defb %00000000
 defb %00000000
 defb %00000000
 defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
+defb %10000000
+defb %01000000
+defb %11000000
 defb %00000000
 
-defb %00000011
 defb %00000000
 defb %00000000
-defb %00000001
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
 defb %00000110
-defb %00000011
-defb %00000001
+defb %00000110
+defb %00000110
+defb %00001001
+defb %00010110
+defb %00100000
+defb %00111111
+defb %00001001
+
+
+
+
+
+
+
+spriteData_12:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %10000000
+defb %01000000
+defb %00100000
+defb %11100000
+defb %10000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
 defb %00000000
 
-defb %10000110
-defb %11111100
-defb %01111000
-defb %10000100
-defb %10001010
-defb %00001010
-defb %10000100
+defb %00000011
+defb %00000011
+defb %00000011
+defb %00000100
+defb %00001011
+defb %00010000
+defb %00011111
+defb %00000100
+
+
+
+
+
+
+
+spriteData_13:
+defb %10000000
+defb %10000000
+defb %10000000
+defb %01000000
+defb %10100000
+defb %00010000
+defb %11110000
+defb %01000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000001
+defb %00000001
+defb %00000001
+defb %00000010
+defb %00000101
+defb %00001000
+defb %00001111
+defb %00000010
+
+
+
+
+
+
+
+spriteData_14:
+defb %11000000
+defb %11000000
+defb %11000000
+defb %00100000
+defb %11010000
+defb %00001000
 defb %11111000
+defb %00100000
 
 defb %00000000
 defb %00000000
@@ -981,6 +1141,14 @@ defb %00000000
 defb %00000000
 defb %00000000
 
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000010
+defb %00000100
+defb %00000111
+defb %00000001
 
 
 
@@ -988,175 +1156,304 @@ defb %00000000
 
 
 
+spriteData_15:
+defb %01100000
+defb %01100000
+defb %01100000
+defb %10010000
+defb %01101000
+defb %00000100
+defb %11111100
+defb %10010000
 
-SpaceShip1:  
- ; beacuse of the way the sprite is being drawn this has to be organised in memory the same way
- ; in other words all the first column of pixels of the first 8bytes then all the second and so on
- ; then repeated on each row of 8x8 charaters
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000010
+defb %00000011
+defb %00000000
+
+
+
+
+
+
+
+spriteData_16:
+defb %00110000
+defb %00110000
+defb %00110000
+defb %01001000
+defb %10110100
+defb %00000010
+defb %11111110
+defb %01001000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+defb %00000000
 defb %00000000
 defb %00000000
 defb %00000000
 defb %00000000
 defb %00000001
 defb %00000001
-defb %00000001
-defb %00000001
+defb %00000000
 
+
+
+
+
+
+
+spriteData_17:
+defb %00011000
+defb %00011000
 defb %00011000
 defb %00100100
-defb %01000010
-defb %10011001
-defb %00111100
-defb %00100100
-defb %00111100
+defb %01011010
+defb %10000001
+defb %11111111
 defb %00100100
 
 defb %00000000
 defb %00000000
 defb %00000000
 defb %00000000
-defb %10000000
-defb %10000000
-defb %10000000
-defb %10000000
-
-defb %00000001
-defb %00000010
-defb %00000100
-defb %00001000
-defb %10010000
-defb %10100000
-defb %11000000
-defb %11111111
-
-defb %00111100
 defb %00000000
 defb %00000000
 defb %00000000
-defb %10000001
-defb %10000001
-defb %10000001
-defb %11111111
+defb %00000000
 
-defb %10000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+
+
+
+
+
+
+spriteData_18:
+defb %00001100
+defb %00001100
+defb %00001100
+defb %00010010
+defb %00101101
 defb %01000000
-defb %00100000
-defb %00010000
+defb %01111111
+defb %00010010
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %10000000
+defb %10000000
+defb %00000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+
+
+
+
+
+
+spriteData_19:
+defb %00000110
+defb %00000110
+defb %00000110
 defb %00001001
-defb %00000101
-defb %00000011
-defb %11111111
-
-defb %00000011
-defb %00000000
-defb %00000001
-defb %00000010
-defb %00000001
-defb %00000000
-defb %00000010
-defb %00000000
-
-defb %11000011
-defb %00000000
-defb %01000001
-defb %10010010
-defb %00000001
-defb %10100000
-defb %00000010
-defb %01000000
-
-defb %11000000
-defb %00000000
-defb %01000000
-defb %10000000
-defb %01000000
-defb %00000000
-defb %01000000
-defb %00000000
-
-
-SpaceShip2:
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000001
-defb %00000001
-defb %00000001
-defb %00000001
-
-defb %00011000
-defb %00100100
-defb %01000010
-defb %10011001
-defb %00111100
-defb %00100100
-defb %00111100
-defb %00100100
-
-defb %00000000
-defb %00000000
-defb %00000000
-defb %00000000
-defb %10000000
-defb %10000000
-defb %10000000
-defb %10000000
-
-defb %00000001
-defb %00000010
-defb %00000100
-defb %00001000
-defb %10010000
-defb %10100000
-defb %11000000
-defb %11111111
-
-defb %00111100
-defb %00000000
-defb %00000000
-defb %00000000
-defb %10000001
-defb %10000001
-defb %10000001
-defb %11111111
-
-defb %10000000
-defb %01000000
+defb %00010110
 defb %00100000
-defb %00010000
+defb %00111111
 defb %00001001
-defb %00000101
-defb %00000011
-defb %11111111
 
-defb %00000011
 defb %00000000
-defb %00000001
 defb %00000000
-defb %00000001
 defb %00000000
-defb %00000001
 defb %00000000
-
-defb %11000011
-defb %00000000
-defb %01000001
-defb %10100010
-defb %00000100
-defb %10100001
+defb %10000000
 defb %01000000
-defb %01010001
-
 defb %11000000
 defb %00000000
-defb %00100000
-defb %10000000
-defb %10000000
+
 defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+
+
+
+
+
+
+spriteData_20:
+defb %00000011
+defb %00000011
+defb %00000011
+defb %00000100
+defb %00001011
+defb %00010000
+defb %00011111
+defb %00000100
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %10000000
 defb %01000000
 defb %00100000
+defb %11100000
+defb %10000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
 
 
+
+
+
+
+
+spriteData_21:
+defb %00000001
+defb %00000001
+defb %00000001
+defb %00000010
+defb %00000101
+defb %00001000
+defb %00001111
+defb %00000010
+
+defb %10000000
+defb %10000000
+defb %10000000
+defb %01000000
+defb %10100000
+defb %00010000
+defb %11110000
+defb %01000000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+
+
+
+
+
+
+spriteData_22:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000010
+defb %00000100
+defb %00000111
+defb %00000001
+
+defb %11000000
+defb %11000000
+defb %11000000
+defb %00100000
+defb %11010000
+defb %00001000
+defb %11111000
+defb %00100000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+
+
+
+
+
+
+
+spriteData_23:
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000001
+defb %00000010
+defb %00000011
+defb %00000000
+
+defb %01100000
+defb %01100000
+defb %01100000
+defb %10010000
+defb %01101000
+defb %00000100
+defb %11111100
+defb %10010000
+
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
+defb %00000000
 
 end $8000

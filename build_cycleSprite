@@ -1,0 +1,2 @@
+rm -f  cycleSprite.tap
+pasmo -1 --tapbas cycleSprite.asm cycleSprite.tap
