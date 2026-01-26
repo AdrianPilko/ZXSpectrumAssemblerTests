@@ -56,8 +56,14 @@ ScanKey_P:
     ld a, $df
     in a, ($fe)
     bit $00, a
-    jr nz, DoneScanKeys
+    jr nz, ScanKey_Space
     set $03, d    
+ScanKey_Space:
+    ld a, $7f
+    in a, ($fe)
+    bit $00, a
+    jr nz, DoneScanKeys
+    set $04, d   
 
 DoneScanKeys: 
 
@@ -70,6 +76,8 @@ DoneScanKeys:
     jr nz, MoveSpriteLeft
     bit $03, d
     jr nz, MoveSpriteRight
+    bit $04, d
+    jp nz, FireRocket
     jp DrawSprite
 
 
@@ -79,11 +87,23 @@ MoveSpriteUp:
     dec a
     cp 9
     jp z, DrawSprite 
+    dec a
+    cp 9
+    jp z, DrawSprite 
+    dec a
+    cp 9
+    jp z, DrawSprite 
     ld (SpriteYPos),a
     jp DrawSprite
 MoveSpriteDown:
     call DrawBlank8_24
     ld a, (SpriteYPos)
+    inc a
+    cp 176
+    jp z, DrawSprite
+    inc a 
+    cp 176
+    jp z, DrawSprite 
     inc a 
     cp 176
     jp z, DrawSprite 
@@ -93,17 +113,29 @@ MoveSpriteLeft:
     call DrawBlank8_24
     ld a, (SpriteFrameCounter)
     dec a
-    ld (SpriteFrameCounter), a    
     cp -8
     jp z, resetFramCountAndDecX
+    dec a
+    cp -8
+    jp z, resetFramCountAndDecX
+    dec a
+    cp -8
+    jp z, resetFramCountAndDecX
+    ld (SpriteFrameCounter), a    
     jp DrawSprite
 MoveSpriteRight:
     call DrawBlank8_24
     ld a, (SpriteFrameCounter)
     inc a
-    ld (SpriteFrameCounter), a    
     cp 8
     jp z, resetFramCountAndIncX
+    inc a
+    cp 8
+    jp z, resetFramCountAndIncX
+    inc a
+    cp 8
+    jp z, resetFramCountAndIncX
+    ld (SpriteFrameCounter), a        
     jp DrawSprite
 resetFramCountAndIncX:
     ld a, (SpriteXPos)
@@ -117,13 +149,67 @@ resetFramCountAndIncX:
 resetFramCountAndDecX:
     ld a, (SpriteXPos)
     dec a
-    cp 0
+    cp 1
     jp z, DrawSprite 
     ld (SpriteXPos),a    
     xor a 
     ld (SpriteFrameCounter), a
+    jp DrawSprite
+
+FireRocket:
+    ld a, (RocketFiring)
+    cp 1
+    jp z, ActuallyDrawSprite ; not firing
+    ld a, (SpriteXPos)
+    ld (RocketXPos),a
+    ld a, (SpriteYPos)
+    ld (RocketYPos),a    
+    ld a, 1
+    ld (RocketFiring),a
+    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
+    ld de, 40
+    add hl, de 
+    ld a, 2
+    ld (hl),a
+
     ;jp DrawSprite
+
+
 DrawSprite:    
+
+    ; if rocket firing then draw 
+    ld a, (RocketFiring)
+    cp 0
+    jp z, ActuallyDrawSprite
+
+
+    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
+    ld de, 40
+    add hl, de 
+    ld a, 2
+    ld (hl),a
+
+
+    ld c, (RocketYPos)
+    ld b, (RocketXPos)
+    call GetScreenPos
+    ld a, %10011001
+    ld (hl),a
+    ld a, (RocketYPos)
+    dec a
+    cp 1
+    jp z, resetRocket
+    ld (RocketYPos),a
+    jp ActuallyDrawSprite
+resetRocket:
+    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
+    ld de, 40
+    add hl, de 
+    ld a, 5
+    ld (hl),a
+
+    xor a 
+    ld (RocketFiring), a
 
 ActuallyDrawSprite:
     ld a, (SpriteXPos) ; have todo this ld a,(nn) then ld b, a
@@ -692,6 +778,12 @@ GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
 
 
+RocketXPos:
+    defb 0
+RocketYPos:
+    defb 0
+RocketFiring:
+    defb 0
 
 SpriteMoveX:
     defb 0
