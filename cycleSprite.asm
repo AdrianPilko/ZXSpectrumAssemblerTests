@@ -91,11 +91,11 @@ MoveSpriteDown:
     jp DrawSprite
 MoveSpriteLeft:       
     call DrawBlank8_24
-    ld a, (SpriteXPos)
-    dec a 
-    cp 0
-    jp z, DrawSprite 
-    ld (SpriteXPos),a
+    ld a, (SpriteFrameCounter)
+    dec a
+    ld (SpriteFrameCounter), a    
+    cp -8
+    jp z, resetFramCountAndDecX
     jp DrawSprite
 MoveSpriteRight:
     call DrawBlank8_24
@@ -113,7 +113,16 @@ resetFramCountAndIncX:
     ld (SpriteXPos),a    
     xor a 
     ld (SpriteFrameCounter), a
-    
+    jp DrawSprite
+resetFramCountAndDecX:
+    ld a, (SpriteXPos)
+    dec a
+    cp 0
+    jp z, DrawSprite 
+    ld (SpriteXPos),a    
+    xor a 
+    ld (SpriteFrameCounter), a
+    ;jp DrawSprite
 DrawSprite:    
 
 ActuallyDrawSprite:
@@ -155,17 +164,54 @@ checkSPCount5:
     jp ReallyDrawSprite
 checkSPCount6: 
     cp 7
-    jp nz, checkSPCount7
+    jp nz, checkSPCountM1
     ld de, spriteData_7
     jp ReallyDrawSprite
-checkSPCount7: 
-    cp 7
-    jp nz, checkSPCount8
-    ld de, spriteData_8
+checkSPCountM1: 
+    cp -1
+    jp nz, checkSPCountM2
+    ld de, spriteData_22
     jp ReallyDrawSprite
-checkSPCount8: 
+checkSPCountM2: 
+    cp -2
+    jp nz, checkSPCountM3
+    ld de, spriteData_21
+    jp ReallyDrawSprite
+checkSPCountM3: 
+    cp -3
+    jp nz, checkSPCountM4
+    ld de, spriteData_20
+    jp ReallyDrawSprite
+checkSPCountM4: 
+    cp -4
+    jp nz, checkSPCountM5
+    ld de, spriteData_19
+    jp ReallyDrawSprite
+checkSPCountM5: 
+    cp -5
+    jp nz, checkSPCountM6
+    ld de, spriteData_18
+    jp ReallyDrawSprite
+checkSPCountM6: 
+    cp -6
+    jp nz, checkSPCountM7
+    ld de, spriteData_17
+    jp ReallyDrawSprite
+checkSPCountM7: 
+    cp -7
+    jp nz, checkSPCountM8
+    ld de, spriteData_16
+    jp ReallyDrawSprite
+checkSPCountM8: 
+    cp -8
+    jp nz, resetSpriteAfterM8
+    ld de, spriteData_15
+    jp ReallyDrawSprite
+resetSpriteAfterM8: 
     xor a
     ld (SpriteFrameCounter), a
+
+
 ReallyDrawSprite:
    ; call DrawSprite24x24 ;; this is just a test at momemt till it's working properlDelay
     call DrawSprite8x24
