@@ -159,17 +159,21 @@ resetFramCountAndDecX:
 FireRocket:
     ld a, (RocketFiring)
     cp 1
-    jp z, ActuallyDrawSprite ; not firing
+    jp nz, setupRocket 
+    jp DrawSprite ;  firing already
+setupRocket:    
+    ;; not 1  so not firing
     ld a, (SpriteXPos)
     ld (RocketXPos),a
     ld a, (SpriteYPos)
+    ;ld a, 190
     ld (RocketYPos),a    
     ld a, 1
     ld (RocketFiring),a
     ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
     ld de, 40
     add hl, de 
-    ld a, 2
+    ld a, 'h'
     ld (hl),a
 
     ;jp DrawSprite
@@ -179,36 +183,50 @@ DrawSprite:
 
     ; if rocket firing then draw 
     ld a, (RocketFiring)
-    cp 0
-    jp z, ActuallyDrawSprite
-
-
-    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
-    ld de, 40
-    add hl, de 
-    ld a, 2
-    ld (hl),a
-
-
-    ld c, (RocketYPos)
-    ld b, (RocketXPos)
-    call GetScreenPos
-    ld a, %10011001
-    ld (hl),a
-    ld a, (RocketYPos)
-    dec a
     cp 1
-    jp z, resetRocket
-    ld (RocketYPos),a
-    jp ActuallyDrawSprite
-resetRocket:
-    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
-    ld de, 40
-    add hl, de 
-    ld a, 5
-    ld (hl),a
+    jp nz, ActuallyDrawSprite
 
-    xor a 
+    ld a, (SpriteXPos)
+    ld b, a
+    ld a, (SpriteYPos)
+    ld c, a
+    ;ld c, 180
+    call GetScreenPos
+    ld a, 192 
+    ld b, a
+    ld a, (SpriteYPos)
+    sub b
+    ld b, a
+fire:
+    push bc
+        ld a, %00011000
+        ld (hl),a
+        call PreviousScan
+    pop bc
+    djnz fire
+
+
+    ld a, (SpriteXPos)
+    ld b, a
+    ld a, (SpriteYPos)
+    ld c, a
+    ;ld c, 180
+    call GetScreenPos
+    ld a, 192 
+    ld b, a
+    ld a, (SpriteYPos)
+    sub b
+    ld b, a
+fireBlank:
+    push bc
+        ld a, %00000000
+        ld (hl),a
+        call PreviousScan
+    pop bc
+    djnz fireBlank
+    ;jp ActuallyDrawSprite
+resetRocket:
+    ld a, 0 
     ld (RocketFiring), a
 
 ActuallyDrawSprite:
@@ -687,6 +705,47 @@ GetScreenPos:	;return memory pos in HL of screen co-ord B,C (X,Y)
 	ld (ScreenLinePos_Plus2-2),hl
 	ret
 
+
+; -------------------------------------------------
+; PreviousScan
+; https://tinyurl.com/223d4xx4
+; Gets the memory location corresponding to the
+; scanline.
+; The following is the first time this has been
+; done; prior to that indicated.
+; 010T TSSS LLLC CCCC
+; Input: HL -> current scanline.
+; Output: HL -> previous scanline.
+; Alters the value of the AF, BC and HL registers.
+;--------------------------------------------------
+PreviousScan:
+; Load the value in A
+ld a, h
+; Decrements H to decrement the scanline
+dec h
+; Keeps the bits of the original scanline
+and $07
+; If not at 0, end of routine
+ret nz
+; Calculate the previous line
+; Load the value of L into A
+ld a, l
+; Subtract one line
+sub $20
+; Load the value in L
+ld l, a
+; If there is carry-over, end of routine
+ret c
+; If you arrive here, you have moved to scanline 7
+; of the previous line and subtracted a third,
+; which we add up again
+; Load the value of H into A
+ld a, h
+; Returns the third to the way it was
+add a, $08
+; Load the value in h
+ld h, a
+ret
 
 ;--------------------------------------------------
 ; NextScan
