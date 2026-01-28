@@ -3,17 +3,34 @@ org $8000
 ;; some helpful equ's
 CLS equ $0d6b
 START_OF_ATTRIBUTE_SCREEN_MEM equ $5800
+;sounds
+C_5: EQU $0326
+C_5_FQ: EQU $020B / $10
+C_4: EQU $066E
+C_4_FQ: EQU $0105 / $10
+
+BEEPER: EQU $03B5
+;--------------------------------------------------
+; ROM Routine similar to Basic AT
+; Position the cursor at the specified coordinates.
+; Input: B -> Y-coordinate.
+; C -> X-coordinate.
+; In this routine, the top left-hand corner of the
+; screen it is (24, 33).
+; Alters the value of the A, DE and HL registers.
+; -------------------------------------------------
+LOCATE: equ $0dd9
 
 Main:
     call CLS   ; clear screen rom routine using CLS equ
 
-    ld a, 10
+    ld a, 15
     ld (SpriteXPos), a
-    ld a, 30
+    ld a, 170
     ld (SpriteYPos), a
     call CLS   ; clear screen rom routine using CLS equ
     call drawPlayAreaBorder
-    ld hl, $5050  ;; start address of platform at left end
+    ld hl, $4150  ;; start address of platform at left end
     ld (platformLocation), hl
     
     ;; read keys and make to allow what for with the sprite shall move    
@@ -165,17 +182,18 @@ setupRocket:
     ;; not 1  so not firing
     ld a, (SpriteXPos)
     ld (RocketXPos),a
+    ;; TODO - adjust the sprite to use as rocket to which ship sprite position in use
     ld a, (SpriteYPos)
     ld (RocketYPos),a    
     ld a, 1
     ld (RocketFiring),a
-    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
-    ld de, 40
-    add hl, de 
-    ld a, 'h'
-    ld (hl),a
 
-    ;jp DrawSprite
+    ld hl, C_5
+    ; DE = duration (frequency)
+    ld de, C_5_FQ
+    ; Jumps to beep
+    call beep
+    ;jp DrawSprite.  ; no need for this unless more code under here
 
 
 DrawSprite:    
@@ -227,6 +245,15 @@ DrawSprite:
         
     jp ActuallyDrawSprite
 resetRocket:
+    ; play explosion sound
+    ld hl, $27a0
+    ; DE = frequency
+    ld de, $2b/$20
+    ;ld hl, C_4
+    ; DE = duration (frequency)
+    ;ld de, C_4_FQ
+    ; Jumps to beep
+    call beep
     ld a, 0 
     ld (RocketFiring), a
 
@@ -323,9 +350,9 @@ ReallyDrawSprite:
     ;call DelayNano
 
 ;; effectively commented out code to draw a moving platform
-MovingPlatformLoop:
+MovingAlienLoop:
     ;push af
-        ld a, 3
+        ld a, 2
         ld hl,(platformLocation)
         ld de, GraphicTile3_8x8
         push hl
@@ -335,7 +362,7 @@ MovingPlatformLoop:
         push hl
             dec l
             ld de, GraphicTileBlank_8x8
-            ld a, 1
+            ld a, 2
             push hl
                 call DrawHorizontalBar
             pop hl
@@ -366,7 +393,7 @@ platform_moves_left
     ld (platformCount), a
     jp EndLoopMovingPlatform    
 resetPlatform:
-    ld hl, $5050            ;; for now move it instantly back, later make it sweep back
+    ld hl, $4150            ;; for now move it instantly back, later make it sweep back
     xor a                   ;; a storing the numbner of times moved
     ld (platformCount), a
     ; toggle the left right flag in  platform_direction
@@ -792,6 +819,25 @@ sub $08
 ld h, a
 ret
 
+; Sounds the note
+beep:
+; Preserves registers; ROM BEEPER routine alters
+; them
+push af
+push bc
+push ix
+; Call BEEPER from ROM
+call BEEPER
+; Retrieves the value of the registers
+pop ix
+pop bc
+pop af
+ret
+
+
+
+
+
 platform_direction:
 
     defb 1
@@ -818,14 +864,14 @@ GraphicTile2_8x8:    ; a box filled in if using attribute colour
     defb %00000000
 
 GraphicTile3_8x8:    ; a box empty for no attribute colour
-    defb %11111111
-    defb %10000001
-    defb %10000001
-    defb %10000001
-    defb %10000001
-    defb %10000001
-    defb %11111111
-    defb %11111111
+    defb %00111100
+    defb %01111110
+    defb %00111100
+    defb %01001000
+    defb %10010100
+    defb %01001000
+    defb %10000110
+    defb %01001001
 
 GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
@@ -836,6 +882,7 @@ GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
     defb %00000000
     defb %00000000
+
 
 
 RocketXPos:
@@ -864,7 +911,7 @@ jumpCount:
 jumpFlag:
     defb 0
 platformLocation
-    defW $5050
+    defW $4148
 platformCount
     defb 0
 
@@ -1667,5 +1714,6 @@ defb %00000000
 defb %00000000
 defb %00000000
 defb %00000000
+
 
 end $8000
