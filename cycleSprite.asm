@@ -166,7 +166,6 @@ setupRocket:
     ld a, (SpriteXPos)
     ld (RocketXPos),a
     ld a, (SpriteYPos)
-    ;ld a, 190
     ld (RocketYPos),a    
     ld a, 1
     ld (RocketFiring),a
@@ -186,45 +185,47 @@ DrawSprite:
     cp 1
     jp nz, ActuallyDrawSprite
 
-    ld a, (SpriteXPos)
+    ld a, (RocketXPos)
     ld b, a
-    ld a, (SpriteYPos)
+    ld a, (RocketYPos)
     ld c, a
-    ;ld c, 180
     call GetScreenPos
-    ld a, 192 
-    ld b, a
-    ld a, (SpriteYPos)
-    sub b
-    ld b, a
-fire:
-    push bc
-        ld a, %00011000
-        ld (hl),a
-        call PreviousScan
-    pop bc
-    djnz fire
+    
+    ld a, %00000000
+    ld (hl),a 
+    call PreviousScan
+    ld a, %00000000
+    ld (hl),a 
+    
+    ld a, (RocketYPos)
+    dec a 
+    dec a 
+    dec a
+    dec a
+    ld (RocketYPos), a
 
-
-    ld a, (SpriteXPos)
+    ld a, (RocketXPos)
     ld b, a
-    ld a, (SpriteYPos)
+    ld a, (RocketYPos)
     ld c, a
-    ;ld c, 180
     call GetScreenPos
-    ld a, 192 
-    ld b, a
-    ld a, (SpriteYPos)
-    sub b
-    ld b, a
-fireBlank:
-    push bc
-        ld a, %00000000
-        ld (hl),a
-        call PreviousScan
-    pop bc
-    djnz fireBlank
-    ;jp ActuallyDrawSprite
+    ld a, %00011000
+    ld (hl),a 
+    call PreviousScan
+    ld a, %00011000
+    ld (hl),a 
+        
+    ld a, (RocketYPos)
+    cp 9
+    jp z, resetRocket
+    cp 8
+    jp z, resetRocket
+    cp 7
+    jp z, resetRocket
+    cp 6
+    jp z, resetRocket
+        
+    jp ActuallyDrawSprite
 resetRocket:
     ld a, 0 
     ld (RocketFiring), a
