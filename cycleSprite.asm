@@ -30,8 +30,8 @@ Main:
     ld (SpriteYPos), a
     call CLS   ; clear screen rom routine using CLS equ
     call drawPlayAreaBorder
-    ld hl, $4150  ;; start address of platform at left end
-    ld (platformLocation), hl
+    ld hl, $4047 ;; start address of platform at left end
+    ld (AlienLocation), hl
     
     ;; read keys and make to allow what for with the sprite shall move    
 
@@ -351,57 +351,68 @@ ReallyDrawSprite:
 
 ;; effectively commented out code to draw a moving platform
 MovingAlienLoop:
-    ;push af
-        ld a, 2
-        ld hl,(platformLocation)
-        ld de, GraphicTile3_8x8
-        push hl
-            call DrawHorizontalBar
-        ; we need to print a blank block at each end
-        pop hl
-        push hl
-            dec l
-            ld de, GraphicTileBlank_8x8
-            ld a, 2
-            push hl
-                call DrawHorizontalBar
-            pop hl
-            ;; becasue the moving platform is length 3 inc l by 4 to get to end
-            inc l
-            inc l
-            inc l
-            inc l
-            ld de, GraphicTileBlank_8x8
-            ld a, 1
-            call DrawHorizontalBar
-        pop hl
-        ld (platformLocation), hl
+    ld a, (moveAlienTimer)
+    dec a
+    cp 1
+    ld (moveAlienTimer),a
+    jp z, DrawAliens
+    jp EndLoopMovingPlatform
+DrawAliens:
+    ld a, 10
+    ld (moveAlienTimer),a 
+LoopOverAllAliens:    
+    ld a, 1 ; causes DrawHorizontalBar to draw one block
+    ld hl,(AlienLocation) ; required for DrawHorizontalBar where to draw the sprite on screen
+    ld de, GraphicTileBlank_8x8
+    dec l
+    call DrawHorizontalBar
+
+
+    ld a, 1
+    ld hl,(AlienLocation)
+    ld de, GraphicTileBlank_8x8
+    inc l
+    call DrawHorizontalBar
+
+    ld a, 1
+    ld hl,(AlienLocation)
+    ld de, AlientGraphic_8x8
+    call DrawHorizontalBar
+    
+    ld hl,(AlienLocation)
     ;; determine direction platforms moving
     ld a, (platform_direction)
     cp 0
-    jp z, platform_moves_left
-platform_moves_right
-    inc l
-    inc l ;; this avoids a second jump platform_moves_left always decs, probably faster
-platform_moves_left
-    dec l
-    ;pop af
-    ld a,(platformCount)
+    jp z, AlienMoves_Left
+AlienMoves_Right:
+    inc hl ;; this avoids a second jump AlienMoves_Left always decs, probably faster
+    ld (AlienLocation),hl
+    ld a,(AlienMoveCounter)
     inc a
-    cp 10
+    cp 15
     jp z, resetPlatform
-    ld (platformCount), a
+    ld (AlienMoveCounter), a
+    jp EndLoopMovingPlatform    
+AlienMoves_Left
+    dec hl
+    ld (AlienLocation), hl
+    ;pop af
+    ld a,(AlienMoveCounter)
+    inc a
+    cp 15
+    jp z, resetPlatform
+    ld (AlienMoveCounter), a
     jp EndLoopMovingPlatform    
 resetPlatform:
-    ld hl, $4150            ;; for now move it instantly back, later make it sweep back
+    ;ld hl, $4047            ;; for now move it instantly back, later make it sweep back
+    ;ld (AlienLocation), hl
     xor a                   ;; a storing the numbner of times moved
-    ld (platformCount), a
+    ld (AlienMoveCounter), a
     ; toggle the left right flag in  platform_direction
     ld a, (platform_direction)
     xor %00000001
     ld (platform_direction), a 
 EndLoopMovingPlatform    
-    ld (platformLocation),hl
     ret
 
 ;; should never get here
@@ -823,15 +834,35 @@ ret
 beep:
 ; Preserves registers; ROM BEEPER routine alters
 ; them
-push af
-push bc
-push ix
+;push af
+;push bc
+;push ix
 ; Call BEEPER from ROM
-call BEEPER
+;call BEEPER
 ; Retrieves the value of the registers
-pop ix
-pop bc
-pop af
+;pop ix
+;pop bc
+;pop af
+
+; Basic Beep Loop (No border change)
+    LD A, (23624)   ; Load current border color from BORDCR ($5C48)
+    AND 7           ; Keep only the border bits (0-2)
+    OR 16           ; Set Bit 4 (Speaker ON)
+
+    ld b, 10
+BeepLoop:
+    push bc
+    OUT (254), A    ; Output to speaker + current border
+    XOR 16          ; Toggle only the speaker bit (Bit 4)
+    
+    ; Timing delay (determines pitch)
+    LD B, h 
+Wait: 
+    DJNZ Wait
+    pop bc
+    ; Add loop counters/logic here to control duration
+    djnz BeepLoop
+
 ret
 
 
@@ -863,15 +894,15 @@ GraphicTile2_8x8:    ; a box filled in if using attribute colour
     defb %01111110
     defb %00000000
 
-GraphicTile3_8x8:    ; a box empty for no attribute colour
+AlientGraphic_8x8:    
     defb %00111100
+    defb %01000010
+    defb %10100101
+    defb %10000001
     defb %01111110
-    defb %00111100
-    defb %01001000
-    defb %10010100
-    defb %01001000
-    defb %10000110
-    defb %01001001
+    defb %00100100
+    defb %01000010
+    defb %10000001
 
 GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
@@ -884,7 +915,8 @@ GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
 
 
-
+moveAlienTimer:
+    defb 20
 RocketXPos:
     defb 0
 RocketYPos:
@@ -910,9 +942,26 @@ jumpCount:
     defb 0
 jumpFlag:
     defb 0
-platformLocation
-    defW $4148
-platformCount
+AlienLocation:  ; we use the ix register to index through the possible aliens locaitons form here 
+    defW $4047
+    defW $4049
+    defW $404b
+    defW $404d
+    defW $404f
+    defW $4051
+    defW $4053
+    defW $4055
+AlienValid: 
+    defb 1
+    defb 1
+    defb 1
+    defb 1
+    defb 1
+    defb 1
+    defb 1
+    defb 1
+    
+AlienMoveCounter
     defb 0
 
 
