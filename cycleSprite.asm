@@ -374,11 +374,26 @@ LoopOverAllAliens:
     inc l
     call DrawHorizontalBar
 
+    ld a, (AlienFrameCount) 
+    cp 1 
+    jp z, AlienFrameCount_1
+
+    ld a, 1
+    ld (AlienFrameCount),a
+    ld hl,(AlienLocation)
+    ld de, AlientGraphic_8x8_2
+    call DrawHorizontalBar
+    jp doneAlienSelect    
+
+AlienFrameCount_1:
+    xor 1
+    ld (AlienFrameCount),a
+    
     ld a, 1
     ld hl,(AlienLocation)
-    ld de, AlientGraphic_8x8
+    ld de, AlientGraphic_8x8_1
     call DrawHorizontalBar
-    
+doneAlienSelect:    
     ld hl,(AlienLocation)
     ;; determine direction platforms moving
     ld a, (platform_direction)
@@ -894,7 +909,7 @@ GraphicTile2_8x8:    ; a box filled in if using attribute colour
     defb %01111110
     defb %00000000
 
-AlientGraphic_8x8:    
+AlientGraphic_8x8_1:    
     defb %00111100
     defb %01000010
     defb %10100101
@@ -903,6 +918,17 @@ AlientGraphic_8x8:
     defb %00100100
     defb %01000010
     defb %10000001
+AlientGraphic_8x8_2:    
+    defb %00111100
+    defb %01000010
+    defb %10100101
+    defb %10100101
+    defb %01111110
+    defb %00100100
+    defb %01000010
+    defb %00100100
+
+
 
 GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
@@ -914,7 +940,8 @@ GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
     defb %00000000
 
-
+AlienFrameCount:
+    defb 0
 moveAlienTimer:
     defb 20
 RocketXPos:
