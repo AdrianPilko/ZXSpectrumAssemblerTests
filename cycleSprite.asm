@@ -20,6 +20,7 @@ BEEPER: EQU $03B5
 ; Alters the value of the A, DE and HL registers.
 ; -------------------------------------------------
 LOCATE: equ $0dd9
+NUMBER_ALIEN_IN_ROW: equ $4
 
 Main:
     call CLS   ; clear screen rom routine using CLS equ
@@ -361,57 +362,93 @@ DrawAliens:
     ld a, 10
     ld (moveAlienTimer),a 
 LoopOverAllAliens:    
-    ld a, 1 ; causes DrawHorizontalBar to draw one block
-    ld hl,(AlienLocation) ; required for DrawHorizontalBar where to draw the sprite on screen
-    ld de, GraphicTileBlank_8x8
-    dec l
-    call DrawHorizontalBar
-
-
-    ld a, 1
-    ld hl,(AlienLocation)
-    ld de, GraphicTileBlank_8x8
-    inc l
-    call DrawHorizontalBar
-
     ld a, (AlienFrameCount) 
     cp 1 
     jp z, AlienFrameCount_1
-
     ld a, 1
-    ld (AlienFrameCount),a
-    ld hl,(AlienLocation)
-    ld de, AlientGraphic_8x8_2
-    call DrawHorizontalBar
+    ld (AlienFrameCount),a        
+    ld b, NUMBER_ALIEN_IN_ROW
+    ld iy,(AlienLocation)
+AlienDrawLoop_1
+    push bc
+        ld l, (iy+0)
+        ld h, (iy+1)
+        inc iy
+        inc iy
+        push hl
+            ld a, 1 ; causes DrawHorizontalBar to draw one block
+            ld de, GraphicTileBlank_8x8
+            dec l
+            call DrawHorizontalBar
+        pop hl
+
+        ld a, 1
+        ld de, AlientGraphic_8x8_2
+        call DrawHorizontalBar
+    pop bc
+    djnz AlienDrawLoop_1
     jp doneAlienSelect    
 
 AlienFrameCount_1:
     xor 1
     ld (AlienFrameCount),a
-    
-    ld a, 1
-    ld hl,(AlienLocation)
-    ld de, AlientGraphic_8x8_1
-    call DrawHorizontalBar
+    ld b, NUMBER_ALIEN_IN_ROW
+    ld iy,AlienLocation
+AlienDrawLoop_2
+    push bc
+        ld l, (iy+0)
+        ld h, (iy+1)
+        inc iy
+        inc iy
+        push hl
+            ld a, 1
+            ld de, GraphicTileBlank_8x8
+            dec l
+            call DrawHorizontalBar
+        pop hl
+        ld a, 1
+        ld de, AlientGraphic_8x8_1
+        call DrawHorizontalBar
+    pop bc
+    djnz AlienDrawLoop_2
 doneAlienSelect:    
-    ld hl,(AlienLocation)
+
+    ;ld hl,(AlienLocation)
     ;; determine direction platforms moving
     ld a, (platform_direction)
     cp 0
     jp z, AlienMoves_Left
 AlienMoves_Right:
-    inc hl ;; this avoids a second jump AlienMoves_Left always decs, probably faster
-    ld (AlienLocation),hl
+    ld b, NUMBER_ALIEN_IN_ROW
+    ld iy,AlienLocation
+AlienMoveIncLoop:
+        ld l,(iy+0)
+        ld h,(iy+1)
+        inc hl ;; this avoids a second jump AlienMoves_Left always decs, probably faster
+        ld (iy+0),l
+        ld (iy+1),h
+        inc iy
+        inc iy        
+    djnz AlienMoveIncLoop
     ld a,(AlienMoveCounter)
     inc a
     cp 15
     jp z, resetPlatform
     ld (AlienMoveCounter), a
     jp EndLoopMovingPlatform    
-AlienMoves_Left
-    dec hl
-    ld (AlienLocation), hl
-    ;pop af
+AlienMoves_Left:
+    ld b, NUMBER_ALIEN_IN_ROW
+    ld iy,AlienLocation
+AlienMoveDecLoop:
+        ld l,(iy+0)
+        ld h,(iy+1)
+        dec hl ;; this avoids a second jump AlienMoves_Left always decs, probably faster
+        ld (iy+0),l
+        ld (iy+1),h
+        inc iy
+        inc iy        
+    djnz AlienMoveDecLoop
+
     ld a,(AlienMoveCounter)
     inc a
     cp 15
@@ -970,14 +1007,14 @@ jumpCount:
 jumpFlag:
     defb 0
 AlienLocation:  ; we use the ix register to index through the possible aliens locaitons form here 
-    defW $4047
-    defW $4049
-    defW $404b
-    defW $404d
-    defW $404f
-    defW $4051
-    defW $4053
-    defW $4055
+    defW $4042
+    defW $4044
+    defW $4046
+    defW $4048
+    defW $404a
+    defW $404c
+    defW $404e
+    defW $4050
 AlienValid: 
     defb 1
     defb 1
