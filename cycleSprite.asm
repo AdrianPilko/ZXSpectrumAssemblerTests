@@ -20,7 +20,8 @@ BEEPER: EQU $03B5
 ; Alters the value of the A, DE and HL registers.
 ; -------------------------------------------------
 LOCATE: equ $0dd9
-NUMBER_ALIEN_IN_ROW: equ $4
+NUMBER_ALIEN_IN_ROW: equ 8
+ALIEN_MOVE_TIMER_INIT: equ 13
 
 Main:
     call CLS   ; clear screen rom routine using CLS equ
@@ -31,8 +32,6 @@ Main:
     ld (SpriteYPos), a
     call CLS   ; clear screen rom routine using CLS equ
     call drawPlayAreaBorder
-    ld hl, $4047 ;; start address of platform at left end
-    ld (AlienLocation), hl
     
     ;; read keys and make to allow what for with the sprite shall move    
 
@@ -359,38 +358,37 @@ MovingAlienLoop:
     jp z, DrawAliens
     jp EndLoopMovingPlatform
 DrawAliens:
-    ld a, 10
+    ld a, ALIEN_MOVE_TIMER_INIT
     ld (moveAlienTimer),a 
-LoopOverAllAliens:    
+LoopOverAllAliens:
+              
     ld a, (AlienFrameCount) 
-    cp 1 
-    jp z, AlienFrameCount_1
-    ld a, 1
-    ld (AlienFrameCount),a        
+    cp 1
+    jp z, AlienFrameCount_2   
+    jp nz, AlienFrameCount_1 
+
+AlienFrameCount_1:
+    inc a
+    ld (AlienFrameCount) , a
     ld b, NUMBER_ALIEN_IN_ROW
     ld iy,(AlienLocation)
+
 AlienDrawLoop_1
     push bc
         ld l, (iy+0)
         ld h, (iy+1)
         inc iy
         inc iy
-        push hl
-            ld a, 1 ; causes DrawHorizontalBar to draw one block
-            ld de, GraphicTileBlank_8x8
-            dec l
-            call DrawHorizontalBar
-        pop hl
-
         ld a, 1
         ld de, AlientGraphic_8x8_2
         call DrawHorizontalBar
     pop bc
     djnz AlienDrawLoop_1
+
     jp doneAlienSelect    
 
-AlienFrameCount_1:
-    xor 1
+AlienFrameCount_2:
+    ld a, 0
     ld (AlienFrameCount),a
     ld b, NUMBER_ALIEN_IN_ROW
     ld iy,AlienLocation
@@ -400,40 +398,41 @@ AlienDrawLoop_2
         ld h, (iy+1)
         inc iy
         inc iy
-        push hl
-            ld a, 1
-            ld de, GraphicTileBlank_8x8
-            dec l
-            call DrawHorizontalBar
-        pop hl
         ld a, 1
         ld de, AlientGraphic_8x8_1
         call DrawHorizontalBar
     pop bc
     djnz AlienDrawLoop_2
+
 doneAlienSelect:    
 
     ;ld hl,(AlienLocation)
     ;; determine direction platforms moving
-    ld a, (platform_direction)
+    ld a, (AlientDirection)
     cp 0
     jp z, AlienMoves_Left
 AlienMoves_Right:
+
+    ld hl,(AlienLocation)
+    ld a, 1
+    ld de, GraphicTileBlank_8x8
+    call DrawHorizontalBar
+         
     ld b, NUMBER_ALIEN_IN_ROW
     ld iy,AlienLocation
 AlienMoveIncLoop:
         ld l,(iy+0)
         ld h,(iy+1)
-        inc hl ;; this avoids a second jump AlienMoves_Left always decs, probably faster
+        inc l ;; this avoids a second jump AlienMoves_Left always decs, probably faster
         ld (iy+0),l
-        ld (iy+1),h
         inc iy
         inc iy        
     djnz AlienMoveIncLoop
+
     ld a,(AlienMoveCounter)
     inc a
-    cp 15
-    jp z, resetPlatform
+    cp ALIEN_MOVE_TIMER_INIT
+    jp z, resetAlienRow
     ld (AlienMoveCounter), a
     jp EndLoopMovingPlatform    
 AlienMoves_Left:
@@ -442,35 +441,40 @@ AlienMoves_Left:
 AlienMoveDecLoop:
         ld l,(iy+0)
         ld h,(iy+1)
-        dec hl ;; this avoids a second jump AlienMoves_Left always decs, probably faster
+        dec l ;; this avoids a second jump AlienMoves_Left always decs, probably faster
         ld (iy+0),l
-        ld (iy+1),h
         inc iy
         inc iy        
     djnz AlienMoveDecLoop
 
+
+    inc l
+    ld a, 1
+    ld de, GraphicTileBlank_8x8
+    call DrawHorizontalBar
+          
+
     ld a,(AlienMoveCounter)
     inc a
-    cp 15
-    jp z, resetPlatform
+    cp ALIEN_MOVE_TIMER_INIT
+    jp z, resetAlienRow
     ld (AlienMoveCounter), a
     jp EndLoopMovingPlatform    
-resetPlatform:
+resetAlienRow:
     ;ld hl, $4047            ;; for now move it instantly back, later make it sweep back
     ;ld (AlienLocation), hl
     xor a                   ;; a storing the numbner of times moved
     ld (AlienMoveCounter), a
-    ; toggle the left right flag in  platform_direction
-    ld a, (platform_direction)
+    ; toggle the left right flag in  AlientDirection
+    ld a, (AlientDirection)
     xor %00000001
-    ld (platform_direction), a 
+    ld (AlientDirection), a 
 EndLoopMovingPlatform    
     ret
 
 ;; should never get here
 EndLoop:
     jp EndLoop
-
 
 DrawBlank24_24
     ld a, (SpriteXPos) ; for some reason, not sure why, if I do ld b, (SpritePosX) directly it just doesn't work?! same for ld c????
@@ -921,7 +925,7 @@ ret
 
 
 
-platform_direction:
+AlientDirection:
 
     defb 1
 
@@ -966,8 +970,23 @@ AlientGraphic_8x8_2:
     defb %00100100
 
 
+GraphicTile3_8x8:    ; a box empty for no attribute colour
+    defb %00010000
+    defb %00010000
+    defb %00010000
+    defb %00010000
+    defb %00010000
+    defb %00010000
+    defb %00010000
+    defb %11111111
 
 GraphicTileBlank_8x8:    ; a box empty for no attribute colour
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
     defb %00000000
     defb %00000000
     defb %00000000
