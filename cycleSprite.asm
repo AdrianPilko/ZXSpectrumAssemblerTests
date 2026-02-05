@@ -22,7 +22,7 @@ BEEPER: EQU $03B5
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 4
-ALIEN_MOVE_TIMER_INIT: equ 13
+ALIEN_MOVE_TIMER_INIT: equ 6
 ALIEN_MOVE_LIMIT: equ 10
 
 Main:
@@ -36,12 +36,16 @@ Main:
     ;; read keys and make to allow what for with the sprite shall move    
 
 MainLoop:
+    ; the bits comments out here are debug to give an indication
+    ; of the cpu cycles being used, when the red boarder fills the
+    ; whole screen means run out of time before next tv frame is being drawn
+
     halt                ; 1. Sync with the TV beam (Start of frame)
-    ld  a, 2             ; 2. Set color to RED (indicates processing start)
-    out ($FE), A        ; Port $FE (254) controls the border
+    ;ld  a, 2             ; 2. Set color to RED (indicates processing start)
+    ;out ($FE), A        ; Port $FE (254) controls the border
     call ScanTheKeyBoard      ; 3. Run your main program logic here
-    ld a, 0             ; 4. Set color to BLACK (indicates processing end)
-    out ($FE), A
+    ;ld a, 0             ; 4. Set color to BLACK (indicates processing end)
+    ;out ($FE), A
     ; Any remaining space in the border is "idle" time
     jp MainLoop
 
@@ -494,7 +498,48 @@ resetAlienRow:
     ld (AlienDirection), a
 
     ;; now move all the aliens down one
+    ;; but first have to blank the top row as this will no longer have aliens
 
+
+    ld iy, AlienLocation
+    ld b, NUMBER_ALIEN_IN_ROW
+AlienBlankTopRowLoop_Cols:
+    push bc
+        ld l, (iy+0)
+        ld h, (iy+1)
+        ld a, 2
+        ld de, GraphicTileBlank_8x8
+        call DrawHorizontalBar
+        inc iy              ; Move IY to the next alien in the table
+        inc iy  
+    pop bc      
+    djnz AlienBlankTopRowLoop_Cols
+
+    ld iy, AlienLocation
+    ld b, NUMBER_ALIEN_ROWS  
+AlienPosDownLoop_Rows:
+    push bc
+    ld b, NUMBER_ALIEN_IN_ROW
+AlienPosDownLoop_Cols:
+        ld l, (iy+0)
+        ld h, (iy+1)
+
+        ld a, l
+        add a, 32           ; Advance 32 bytes (one character row)
+        ld l, a             ; Store new L
+        jr nc, SkipCarrayAddMoveAlienDown      ; If no carry, H remains the same
+        ld a, h
+        add a, 8            ; Carry! Move H to the next screen third
+        ld h, a
+SkipCarrayAddMoveAlienDown:
+        ld (iy+0), l        ; Save updated address back to table
+        ld (iy+1), h
+        
+        inc iy              ; Move IY to the next alien in the table
+        inc iy        
+        djnz AlienPosDownLoop_Cols
+    pop bc
+    djnz AlienPosDownLoop_Rows
     ret
 
 ;; should never get here
@@ -526,7 +571,7 @@ drawPlayAreaBorder
     ld hl, START_OF_ATTRIBUTE_SCREEN_MEM
     ld de, 32
 SetColourLoop:
-    ld a, $04
+    ld a, $02
     ld (hl), a
     add hl, de 
     djnz SetColourLoop
@@ -535,7 +580,7 @@ SetColourLoop:
     ld hl, START_OF_ATTRIBUTE_SCREEN_MEM+$1f
     ld de, 32
 SetColourLoop2:
-    ld a, $04
+    ld a, $02
     ld (hl), a
     add hl, de 
     djnz SetColourLoop2
@@ -543,7 +588,7 @@ SetColourLoop2:
     ld b, 30 ; there's 30 columns but we only want to do the inner 30
     ld hl, $5801 ; offset to attribute memory for top row on character in from left
 SetColourLoop3:
-    ld a, $04
+    ld a, $02
     ld (hl), a
     inc hl 
     djnz SetColourLoop3
@@ -551,7 +596,7 @@ SetColourLoop3:
     ld b, 30 ; there's 30 columns but we only want to do the inner 30
     ld hl, $5ae1 ; offset to attribute memory for bottom row on character in from left
 SetColourLoop4:
-    ld a, $04
+    ld a, $02
     ld (hl), a
     inc hl 
     djnz SetColourLoop4
@@ -1064,6 +1109,16 @@ AlienLocation:  ; we use the ix register to index through the possible aliens lo
     defW $408c
     defW $408e
     defW $4090
+
+
+    defW $40a2
+    defW $40a4
+    defW $40a6
+    defW $40a8
+    defW $40aa
+    defW $40ac
+    defW $40ae
+    defW $40b0
 
 
     defW $40a2
