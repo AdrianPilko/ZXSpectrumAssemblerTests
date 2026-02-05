@@ -421,9 +421,10 @@ AlienDrawLoop_Cols:
 
 
 UpdateAlienPositions:
-    ;; determine direction platforms moving
+    ;; determine direction aliens are currently moving
+    ; 
     ld a, (AlientDirection)
-    cp 0
+    bit 0, a              ;AlientDirection inc elsewhere and this checks the resulting toggled bit zero
     jp z, AlienMoves_Left
 AlienMoves_Right:
 
@@ -487,9 +488,9 @@ AlienPosUpLoop_Cols_L:
 resetAlienRow:
     xor a                   ;; a storing the numbner of times moved
     ld (AlienMoveCounter), a
-    ; toggle the left right flag in  AlientDirection
+    ; toggle the left right flag in  AlientDirection (when using bit 0, a to check)
     ld a, (AlientDirection)
-    xor %00000001
+    inc a 
     ld (AlientDirection), a 
     ret
 
