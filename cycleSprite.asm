@@ -345,12 +345,18 @@ resetSpriteAfterM8:
 
 
 ReallyDrawSprite:
-   ; call DrawSprite24x24 ;; this is just a test at momemt till it's working properlDelay
     call DrawSprite8x24
-    ;call DelayNano
 
 ;; effectively commented out code to draw a moving platform
 MovingAlienLoop:
+    ; clear the debug 
+    ld hl, $50a3
+    ld a, 0
+    ld (hl), a
+    ld hl, $50a5
+    ld (hl), a
+
+
     ld a, (moveAlienTimer)
     dec a
     cp 1
@@ -362,14 +368,17 @@ DrawAliens:
     ld (moveAlienTimer),a 
 LoopOverAllAliens:
               
-    ld a, (AlienFrameCount) 
-    cp 1
-    jp z, AlienFrameCount_2   
-    jp nz, AlienFrameCount_1 
+    ld a, (AlienFrameCounter)
+    inc a 
+    ld (AlienFrameCounter) , a
+    bit 0, a
+    jp nz, AlienFrameCount_2
 
+    ld hl, $50a3
+    ld a, $ff
+    ld (hl), a
+    
 AlienFrameCount_1:
-    inc a
-    ld (AlienFrameCount) , a
     ld b, NUMBER_ALIEN_IN_ROW
     ld iy,(AlienLocation)
 
@@ -380,7 +389,7 @@ AlienDrawLoop_1
         inc iy
         inc iy
         ld a, 1
-        ld de, AlientGraphic_8x8_2
+        ld de, AlientGraphic_8x8_1
         call DrawHorizontalBar
     pop bc
     djnz AlienDrawLoop_1
@@ -388,8 +397,10 @@ AlienDrawLoop_1
     jp doneAlienSelect    
 
 AlienFrameCount_2:
-    ld a, 0
-    ld (AlienFrameCount),a
+    ld hl, $50a5
+    ld a, $ff
+    ld (hl), a
+
     ld b, NUMBER_ALIEN_IN_ROW
     ld iy,AlienLocation
 AlienDrawLoop_2
@@ -399,11 +410,11 @@ AlienDrawLoop_2
         inc iy
         inc iy
         ld a, 1
-        ld de, AlientGraphic_8x8_1
+        ld de, AlientGraphic_8x8_2
         call DrawHorizontalBar
     pop bc
     djnz AlienDrawLoop_2
-
+    
 doneAlienSelect:    
 
     ;ld hl,(AlienLocation)
@@ -886,20 +897,7 @@ sub $08
 ld h, a
 ret
 
-; Sounds the note
 beep:
-; Preserves registers; ROM BEEPER routine alters
-; them
-;push af
-;push bc
-;push ix
-; Call BEEPER from ROM
-;call BEEPER
-; Retrieves the value of the registers
-;pop ix
-;pop bc
-;pop af
-
 ; Basic Beep Loop (No border change)
     LD A, (23624)   ; Load current border color from BORDCR ($5C48)
     AND 7           ; Keep only the border bits (0-2)
@@ -996,7 +994,7 @@ GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
     defb %00000000
 
-AlienFrameCount:
+AlienFrameCounter:
     defb 0
 moveAlienTimer:
     defb 20
