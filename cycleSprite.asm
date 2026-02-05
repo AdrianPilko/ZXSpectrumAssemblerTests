@@ -428,40 +428,52 @@ UpdateAlienPositions:
     jp z, AlienMoves_Left
 AlienMoves_Right:
 
+
     ld hl,(AlienLocation)
     ld a, 2
     ld de, GraphicTileBlank_8x8
     call DrawHorizontalBar
-         
-    ld b, NUMBER_ALIEN_IN_ROW
+
     ld iy,AlienLocation
-AlienMoveIncLoop:
+    ld b, NUMBER_ALIEN_ROWS  
+AlienPosUpLoop_Rows:
+    push bc
+        ld b, NUMBER_ALIEN_IN_ROW
+AlienPosUpLoop_Cols:
         ld l,(iy+0)
         ld h,(iy+1)
         inc l ;; this avoids a second jump AlienMoves_Left always decs, probably faster
         ld (iy+0),l
         inc iy
         inc iy        
-    djnz AlienMoveIncLoop
-
+        djnz AlienPosUpLoop_Cols
+    pop bc
+    djnz AlienPosUpLoop_Rows
     ld a,(AlienMoveCounter)
     inc a
     cp ALIEN_MOVE_LIMIT
     jp z, resetAlienRow
     ld (AlienMoveCounter), a
     ret    
+
+
 AlienMoves_Left:
-    ld b, NUMBER_ALIEN_IN_ROW
+
     ld iy,AlienLocation
-AlienMoveDecLoop:
+    ld b, NUMBER_ALIEN_ROWS  
+AlienPosUpLoop_Rows_L:
+    push bc
+        ld b, NUMBER_ALIEN_IN_ROW
+AlienPosUpLoop_Cols_L:
         ld l,(iy+0)
         ld h,(iy+1)
         dec l ;; this avoids a second jump AlienMoves_Left always decs, probably faster
         ld (iy+0),l
         inc iy
         inc iy        
-    djnz AlienMoveDecLoop
-
+        djnz AlienPosUpLoop_Cols_L
+    pop bc
+    djnz AlienPosUpLoop_Rows_L
     inc l
     ld a, 2
     ld de, GraphicTileBlank_8x8
