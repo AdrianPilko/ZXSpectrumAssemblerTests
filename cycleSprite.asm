@@ -359,9 +359,10 @@ ReallyDrawSprite:
 
 
 DrawAliensTimerExpired:
+    call UpdateAlienPositions
+    
     call ChooseAliens
     call DrawAliensThisTime
-    call UpdateAlienPositions
         
     ld a, ALIEN_MOVE_TIMER_INIT
     ld (moveAlienTimer),a
@@ -397,7 +398,7 @@ AlienDrawLoop_1:
         ld h, (iy+1)
         inc iy
         inc iy
-        ld a, 1
+        ld a, 2
         ;; de already be loaded but save to stack
         push iy 
         push de
@@ -417,7 +418,7 @@ UpdateAlienPositions:
 AlienMoves_Right:
 
     ld hl,(AlienLocation)
-    ld a, 1
+    ld a, 2
     ld de, GraphicTileBlank_8x8
     call DrawHorizontalBar
          
@@ -450,9 +451,8 @@ AlienMoveDecLoop:
         inc iy        
     djnz AlienMoveDecLoop
 
-
     inc l
-    ld a, 1
+    ld a, 2
     ld de, GraphicTileBlank_8x8
     call DrawHorizontalBar
           
