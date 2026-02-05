@@ -22,7 +22,7 @@ BEEPER: EQU $03B5
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
-ALIEN_MOVE_TIMER_INIT: equ 6
+ALIEN_MOVE_TIMER_INIT: equ 20
 ALIEN_MOVE_LIMIT: equ 10
 
 Main:
@@ -354,6 +354,8 @@ ReallyDrawSprite:
    
     call DrawSprite8x24   ; draw the players space ship
 
+    call CheckAliensHit
+
     ld a, (moveAlienTimer)
     dec a
     ld (moveAlienTimer),a
@@ -366,8 +368,7 @@ ReallyDrawSprite:
 DrawAliensTimerExpired:
     call UpdateAlienPositions
     call ChooseAliens
-    call DrawAliensThisTime
-        
+    call DrawAliensThisTime       
     ld a, ALIEN_MOVE_TIMER_INIT
     ld (moveAlienTimer),a
     ret
@@ -545,6 +546,60 @@ SkipCarrayAddMoveAlienDown:
 ;; should never get here
 EndLoop:
     jp EndLoop
+
+CheckAliensHit:
+    xor a 
+    ld (alienCheckCount),a
+    ld b, (RocketXPos)
+    ld c, (RocketYPos)
+    call GetScreenPos  ; takes bc, x y coord and returns hl screen address
+    push hl
+    pop de ;; swap hl into de to make comparison possible
+    ld iy, AlienLocation
+    ld b, NUMBER_ALIEN_ROWS  
+CheckColisAlienLoop_Rows
+    push bc
+        ld b, NUMBER_ALIEN_IN_ROW
+CheckColisAlienLoop_Cols:
+
+        ld l,(iy+0)
+        ld h,(iy+1)
+ 
+        ld a, d
+        cp h 
+        jp z, checkLCollision
+        jp skipCheckCollision
+checkLCollision:
+        ld a, l
+        cp e
+        jp z, RocketHIT
+skipCheckCollision:
+        inc iy
+        inc iy        
+        ld a, (alienCheckCount)
+        inc a 
+        ld (alienCheckCount),a
+
+        djnz CheckColisAlienLoop_Cols
+    pop bc
+    djnz CheckColisAlienLoop_Rows
+    xor a 
+    ld (alienCheckCount),a
+    ret
+
+
+RocketHIT:  
+    pop bc ; have todo this because jumps out of loop early
+    ld hl, AlienValid
+    ld a, (alienCheckCount) 
+    add a, l
+    ld l, a
+    ld (hl), 0
+    xor a
+    ld (RocketFiring),a  
+debugStop:
+    jp debugStop
+    ret
 
 DrawBlank24_24
     ld a, (SpriteXPos) ; for some reason, not sure why, if I do ld b, (SpritePosX) directly it just doesn't work?! same for ld c????
@@ -1078,9 +1133,7 @@ movedRightFlag:
     defb 0
 movedLeftFlag:
     defb 0
-jumpCount:
-    defb 0
-jumpFlag:
+alienCheckCount
     defb 0
 AlienLocation:  ; we use the ix register to index through the possible aliens locaitons form here 
     ; row 1
@@ -1158,16 +1211,9 @@ AlienLocation:  ; we use the ix register to index through the possible aliens lo
     defW $482e
     defW $4830
 
-AlienValid: 
-    defb 1
-    defb 1
-    defb 1
-    defb 1
-    defb 1
-    defb 1
-    defb 1
-    defb 1
-
+AlienValid: ; define 64 bytes set to 1, could save memeory with bit compression, but we have a massive 48K!!!
+    defs 8*8, 1
+   
 AlienAttributeLocations:
     defW $5042
     defW $5044
