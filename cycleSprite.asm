@@ -391,29 +391,33 @@ Alien_1:
 
 DrawAliensThisTime:
     ld iy,AlienLocation
-    ld b, NUMBER_ALIEN_IN_ROW
+    ld b, NUMBER_ALIEN_ROWS
     
-AlienDrawLoop_1:
+AlienDrawLoop_Rows:
     push bc
-        ld l, (iy+0)
-        ld h, (iy+1)
-        inc iy
-        inc iy
-        ld a, 1
-        ;; de already be loaded but save to stack 
-        push de
-            push hl
-                call DrawHorizontalBar
-            ; now draw a blank in next l position
-            pop hl
-            inc l
-            ld de, GraphicTileBlank_8x8
+        ld b, NUMBER_ALIEN_IN_ROW
+AlienDrawLoop_Cols:
+        push bc
+            ld l, (iy+0)
+            ld h, (iy+1)
+            inc iy
+            inc iy
             ld a, 1
-            call DrawHorizontalBar
-        pop de
-        
+            ;; de already be loaded but save to stack 
+            push de
+                push hl
+                    call DrawHorizontalBar
+                ; now draw a blank in next l position
+                pop hl
+                inc l
+                ld de, GraphicTileBlank_8x8
+                ld a, 1
+                call DrawHorizontalBar
+            pop de
+        pop bc
+        djnz AlienDrawLoop_Cols   
     pop bc
-    djnz AlienDrawLoop_1
+    djnz AlienDrawLoop_Rows
     ret
 
 
