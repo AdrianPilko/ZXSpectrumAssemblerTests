@@ -22,30 +22,25 @@ BEEPER: EQU $03B5
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 ALIEN_MOVE_TIMER_INIT: equ 13
+ALIEN_MOVE_LIMIT: equ 10
 
 Main:
-    call CLS   ; clear screen rom routine using CLS equ
-
     ld a, 15
     ld (SpriteXPos), a
     ld a, 170
     ld (SpriteYPos), a
-    call CLS   ; clear screen rom routine using CLS equ
+    call CLS
     call drawPlayAreaBorder
     
     ;; read keys and make to allow what for with the sprite shall move    
 
 MainLoop:
     halt                ; 1. Sync with the TV beam (Start of frame)
-    
     ld  a, 2             ; 2. Set color to RED (indicates processing start)
     out ($FE), A        ; Port $FE (254) controls the border
-
     call ScanTheKeyBoard      ; 3. Run your main program logic here
-
     ld a, 0             ; 4. Set color to BLACK (indicates processing end)
     out ($FE), A
-
     ; Any remaining space in the border is "idle" time
     jp MainLoop
 
@@ -197,7 +192,6 @@ setupRocket:
 
 
 DrawSprite:    
-
     ; if rocket firing then draw 
     ld a, (RocketFiring)
     cp 1
@@ -345,79 +339,77 @@ resetSpriteAfterM8:
 
 
 ReallyDrawSprite:
-    call DrawSprite8x24
-
-;; effectively commented out code to draw a moving platform
-MovingAlienLoop:
-    ; clear the debug 
-    ld hl, $50a3
-    ld a, 0
+    ld hl, $5aa3 ; debug
+    ld a, 16
     ld (hl), a
-    ld hl, $50a5
+   
+    ld hl, $5aa5 ; debug
+    ld a, 16
     ld (hl), a
-
+   
+    call DrawSprite8x24   ; draw the players space ship
 
     ld a, (moveAlienTimer)
     dec a
-    cp 1
     ld (moveAlienTimer),a
-    jp z, DrawAliens
-    jp EndLoopMovingPlatform
-DrawAliens:
+    cp 1
+    jp z, DrawAliensTimerExpired
+    ret
+
+
+
+DrawAliensTimerExpired:
+    call ChooseAliens
+    call DrawAliensThisTime
+    call UpdateAlienPositions
+        
     ld a, ALIEN_MOVE_TIMER_INIT
-    ld (moveAlienTimer),a 
-LoopOverAllAliens:
-              
+    ld (moveAlienTimer),a
+    ret
+
+ChooseAliens:
     ld a, (AlienFrameCounter)
     inc a 
     ld (AlienFrameCounter) , a
     bit 0, a
-    jp nz, AlienFrameCount_2
-
-    ld hl, $50a3
-    ld a, $ff
+    jp nz, Alien_1 
+Alien_2:
+    ld de, AlienGraphic_8x8_2
+    ld hl, $5aa5 ; debug
+    ld a, 2
     ld (hl), a
-    
-AlienFrameCount_1:
-    ld b, NUMBER_ALIEN_IN_ROW
-    ld iy,(AlienLocation)
+    ret
 
-AlienDrawLoop_1
+Alien_1:
+    ld de, AlienGraphic_8x8_1
+    ld hl, $5aa3 ;debug
+    ld a, 2
+    ld (hl), a
+    ret
+
+DrawAliensThisTime:
+    ld iy,AlienLocation
+    ld b, NUMBER_ALIEN_IN_ROW
+    
+AlienDrawLoop_1:
     push bc
         ld l, (iy+0)
         ld h, (iy+1)
         inc iy
         inc iy
         ld a, 1
-        ld de, AlientGraphic_8x8_1
-        call DrawHorizontalBar
+        ;; de already be loaded but save to stack
+        push iy 
+        push de
+            call DrawHorizontalBar
+        pop de
+        pop iy
     pop bc
     djnz AlienDrawLoop_1
+    ret
 
-    jp doneAlienSelect    
 
-AlienFrameCount_2:
-    ld hl, $50a5
-    ld a, $ff
-    ld (hl), a
-
-    ld b, NUMBER_ALIEN_IN_ROW
-    ld iy,AlienLocation
-AlienDrawLoop_2
-    push bc
-        ld l, (iy+0)
-        ld h, (iy+1)
-        inc iy
-        inc iy
-        ld a, 1
-        ld de, AlientGraphic_8x8_2
-        call DrawHorizontalBar
-    pop bc
-    djnz AlienDrawLoop_2
-    
-doneAlienSelect:    
-
-    ;ld hl,(AlienLocation)
+UpdateAlienPositions:
     ;; determine direction platforms moving
     ld a, (AlientDirection)
     cp 0
@@ -442,10 +434,10 @@ AlienMoveIncLoop:
 
     ld a,(AlienMoveCounter)
     inc a
-    cp ALIEN_MOVE_TIMER_INIT
+    cp ALIEN_MOVE_LIMIT
     jp z, resetAlienRow
     ld (AlienMoveCounter), a
-    jp EndLoopMovingPlatform    
+    ret    
 AlienMoves_Left:
     ld b, NUMBER_ALIEN_IN_ROW
     ld iy,AlienLocation
@@ -467,10 +459,10 @@ AlienMoveDecLoop:
 
     ld a,(AlienMoveCounter)
     inc a
-    cp ALIEN_MOVE_TIMER_INIT
+    cp ALIEN_MOVE_LIMIT
     jp z, resetAlienRow
     ld (AlienMoveCounter), a
-    jp EndLoopMovingPlatform    
+    ret   
 resetAlienRow:
     ;ld hl, $4047            ;; for now move it instantly back, later make it sweep back
     ;ld (AlienLocation), hl
@@ -480,7 +472,6 @@ resetAlienRow:
     ld a, (AlientDirection)
     xor %00000001
     ld (AlientDirection), a 
-EndLoopMovingPlatform    
     ret
 
 ;; should never get here
@@ -948,7 +939,7 @@ GraphicTile2_8x8:    ; a box filled in if using attribute colour
     defb %01111110
     defb %00000000
 
-AlientGraphic_8x8_1:    
+AlienGraphic_8x8_1:    
     defb %00111100
     defb %01000010
     defb %10100101
@@ -957,11 +948,11 @@ AlientGraphic_8x8_1:
     defb %00100100
     defb %01000010
     defb %10000001
-AlientGraphic_8x8_2:    
+AlienGraphic_8x8_2:    
     defb %00111100
     defb %01000010
     defb %10100101
-    defb %10100101
+    defb %10000001
     defb %01111110
     defb %00100100
     defb %01000010
@@ -1041,7 +1032,17 @@ AlienValid:
     defb 1
     defb 1
     defb 1
-    
+
+AlienAttributeLocations:
+    defW $5042
+    defW $5044
+    defW $5046
+    defW $5048
+    defW $504a
+    defW $504c
+    defW $504e
+    defW $5050
+
 AlienMoveCounter
     defb 0
 
