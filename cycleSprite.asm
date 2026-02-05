@@ -485,8 +485,6 @@ AlienPosUpLoop_Cols_L:
     ld (AlienMoveCounter), a
     ret   
 resetAlienRow:
-    ;ld hl, $4047            ;; for now move it instantly back, later make it sweep back
-    ;ld (AlienLocation), hl
     xor a                   ;; a storing the numbner of times moved
     ld (AlienMoveCounter), a
     ; toggle the left right flag in  AlientDirection
