@@ -21,6 +21,7 @@ BEEPER: EQU $03B5
 ; -------------------------------------------------
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
+NUMBER_ALIEN_ROWS: equ 4
 ALIEN_MOVE_TIMER_INIT: equ 13
 ALIEN_MOVE_LIMIT: equ 10
 
@@ -398,13 +399,19 @@ AlienDrawLoop_1:
         ld h, (iy+1)
         inc iy
         inc iy
-        ld a, 2
-        ;; de already be loaded but save to stack
-        push iy 
+        ld a, 1
+        ;; de already be loaded but save to stack 
         push de
+            push hl
+                call DrawHorizontalBar
+            ; now draw a blank in next l position
+            pop hl
+            inc l
+            ld de, GraphicTileBlank_8x8
+            ld a, 1
             call DrawHorizontalBar
         pop de
-        pop iy
+        
     pop bc
     djnz AlienDrawLoop_1
     ret
@@ -1023,6 +1030,35 @@ AlienLocation:  ; we use the ix register to index through the possible aliens lo
     defW $404c
     defW $404e
     defW $4050
+
+    defW $4062
+    defW $4064
+    defW $4066
+    defW $4068
+    defW $406a
+    defW $406c
+    defW $406e
+    defW $4070
+
+    defW $4082
+    defW $4084
+    defW $4086
+    defW $4088
+    defW $408a
+    defW $408c
+    defW $408e
+    defW $4090
+
+
+    defW $40a2
+    defW $40a4
+    defW $40a6
+    defW $40a8
+    defW $40aa
+    defW $40ac
+    defW $40ae
+    defW $40b0
+
 AlienValid: 
     defb 1
     defb 1
