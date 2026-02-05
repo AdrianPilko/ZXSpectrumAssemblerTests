@@ -340,13 +340,13 @@ resetSpriteAfterM8:
 
 
 ReallyDrawSprite:
-    ld hl, $5aa3 ; debug
-    ld a, 16
-    ld (hl), a
+;    ld hl, $5aa3 ; debug
+;    ld a, 16
+;    ld (hl), a
    
-    ld hl, $5aa5 ; debug
-    ld a, 16
-    ld (hl), a
+;    ld hl, $5aa5 ; debug
+;    ld a, 16
+;    ld (hl), a
    
     call DrawSprite8x24   ; draw the players space ship
 
@@ -361,7 +361,6 @@ ReallyDrawSprite:
 
 DrawAliensTimerExpired:
     call UpdateAlienPositions
-    
     call ChooseAliens
     call DrawAliensThisTime
         
@@ -377,16 +376,16 @@ ChooseAliens:
     jp nz, Alien_1 
 Alien_2:
     ld de, AlienGraphic_8x8_2
-    ld hl, $5aa5 ; debug
-    ld a, 2
-    ld (hl), a
+    ;ld hl, $5aa5 ; debug
+    ;ld a, 2
+    ;ld (hl), a
     ret
 
 Alien_1:
     ld de, AlienGraphic_8x8_1
-    ld hl, $5aa3 ;debug
-    ld a, 2
-    ld (hl), a
+    ;ld hl, $5aa3 ;debug
+    ;ld a, 2
+    ;ld (hl), a
     ret
 
 DrawAliensThisTime:
@@ -428,17 +427,16 @@ UpdateAlienPositions:
     jp z, AlienMoves_Left
 AlienMoves_Right:
 
-
-    ld hl,(AlienLocation)
-    ld a, 2
-    ld de, GraphicTileBlank_8x8
-    call DrawHorizontalBar
-
     ld iy,AlienLocation
     ld b, NUMBER_ALIEN_ROWS  
 AlienPosUpLoop_Rows:
     push bc
-        ld b, NUMBER_ALIEN_IN_ROW
+    ld l,(iy+0)
+    ld h,(iy+1)
+    ld a, 2
+    ld de, GraphicTileBlank_8x8
+    call DrawHorizontalBar    
+    ld b, NUMBER_ALIEN_IN_ROW
 AlienPosUpLoop_Cols:
         ld l,(iy+0)
         ld h,(iy+1)
