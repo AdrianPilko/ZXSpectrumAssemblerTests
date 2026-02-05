@@ -21,7 +21,7 @@ BEEPER: EQU $03B5
 ; -------------------------------------------------
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
-NUMBER_ALIEN_ROWS: equ 4
+NUMBER_ALIEN_ROWS: equ 8
 ALIEN_MOVE_TIMER_INIT: equ 6
 ALIEN_MOVE_LIMIT: equ 10
 
@@ -1083,6 +1083,7 @@ jumpCount:
 jumpFlag:
     defb 0
 AlienLocation:  ; we use the ix register to index through the possible aliens locaitons form here 
+    ; row 1
     defW $4042
     defW $4044
     defW $4046
@@ -1091,7 +1092,7 @@ AlienLocation:  ; we use the ix register to index through the possible aliens lo
     defW $404c
     defW $404e
     defW $4050
-
+    ; row 2
     defW $4062
     defW $4064
     defW $4066
@@ -1100,7 +1101,7 @@ AlienLocation:  ; we use the ix register to index through the possible aliens lo
     defW $406c
     defW $406e
     defW $4070
-
+    ; row 3
     defW $4082
     defW $4084
     defW $4086
@@ -1109,8 +1110,7 @@ AlienLocation:  ; we use the ix register to index through the possible aliens lo
     defW $408c
     defW $408e
     defW $4090
-
-
+    ;row 4
     defW $40a2
     defW $40a4
     defW $40a6
@@ -1119,16 +1119,44 @@ AlienLocation:  ; we use the ix register to index through the possible aliens lo
     defW $40ac
     defW $40ae
     defW $40b0
+    ; row 5 
+    defW $40c2
+    defW $40c4
+    defW $40c6
+    defW $40c8
+    defW $40ca
+    defW $40cc
+    defW $40ce
+    defW $40d0
+    ;row 6
+    defW $40e2
+    defW $40e4
+    defW $40e6
+    defW $40e8
+    defW $40ea
+    defW $40ec
+    defW $40ee
+    defW $40f0
 
+    ;row 7
+    defW $4802
+    defW $4804
+    defW $4806
+    defW $4808
+    defW $480a
+    defW $480c
+    defW $480e
+    defW $4810
 
-    defW $40a2
-    defW $40a4
-    defW $40a6
-    defW $40a8
-    defW $40aa
-    defW $40ac
-    defW $40ae
-    defW $40b0
+    ;row 8
+    defW $4822
+    defW $4824
+    defW $4826
+    defW $4828
+    defW $482a
+    defW $482c
+    defW $482e
+    defW $4830
 
 AlienValid: 
     defb 1
