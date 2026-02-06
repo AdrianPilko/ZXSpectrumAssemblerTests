@@ -1,4 +1,3 @@
-org $8000
 
 ;; some helpful equ's
 CLS equ $0d6b
@@ -25,6 +24,85 @@ NUMBER_ALIEN_ROWS: equ 8
 ALIEN_MOVE_TIMER_INIT: equ 20
 ALIEN_MOVE_LIMIT: equ 10
 
+    org $8000
+    defs $190
+
+Start:
+    di                  ; Disable interrupts during setup
+    
+    ; 1. Create the Vector Table at $8000
+    ld HL, $8000        ; Table starts at $8000
+    ld a, $81        ; Fill with $81
+    ld de, $8001
+    ld (hl), a
+    ld bc, $0101-1         
+    ldir                ; fill
+
+    dec a
+    ld i, a
+    ; 2. Place the Interrupt Service Routine (ISR) at $8181
+    ld a, $C3           ; Opcode for 'JP'
+    ld ($8181), a
+    ld hl, MyISR        ; Address of our counter routine
+    ld ($8182), hl
+
+    im 2                ; Enter Interrupt Mode 2
+    ei                  ; re enable interrupts
+    jp Main
+
+MyISR:
+    ex af, af'              ; save a and flags to alternate register set
+        push bc             ; Always save registers as this can and will be asynchronous to the other code
+        push de
+        push hl
+        push ix
+        push iy
+
+        ;    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM ; debug
+        ;    ld a,(debugColour1)
+        ;    inc a
+        ;    ld (debugColour1),a
+        ;    ld (hl), a
+
+            ld hl, FrameCount
+            inc (hl)
+        pop iy
+        pop ix
+        pop hl
+        pop de
+        pop bc
+    ex af,af'
+    ei                  ; Re-enable interrupts
+    reti                ; Return from Interrupt
+
+
+Wait5Frames:
+    ld a, (FrameCount)
+    inc a            ; Target frame, just 1
+    ld b, a
+Wait5Frames_loop:
+    halt                ; Wait for the next interrupt
+   ; push af
+   ;     ld hl, START_OF_ATTRIBUTE_SCREEN_MEM+1 ; debug
+   ;     ld a,(debugColour2)
+   ;     inc a
+   ;     ld (debugColour2),a
+   ;     ld (hl), a
+   ; pop af
+
+    ld a, (FrameCount)
+    cp b                ; Compare current to target
+    jr c, Wait5Frames_loop
+    ret
+
+
+FrameCount: 
+    defw 0      ; Our 1-byte counter
+debugColour1:
+    defb 2
+debugColour2:
+    defb 3
+
 Main:
     ld a, 15
     ld (SpriteXPos), a
@@ -40,10 +118,13 @@ MainLoop:
     ; of the cpu cycles being used, when the red boarder fills the
     ; whole screen means run out of time before next tv frame is being drawn
 
-    halt                ; 1. Sync with the TV beam (Start of frame)
+    ;halt 
+    call Wait5Frames
+
     ;ld  a, 2             ; 2. Set color to RED (indicates processing start)
     ;out ($FE), A        ; Port $FE (254) controls the border
     call ScanTheKeyBoard      ; 3. Run your main program logic here
+    
     ;ld a, 0             ; 4. Set color to BLACK (indicates processing end)
     ;out ($FE), A
     ; Any remaining space in the border is "idle" time
@@ -550,8 +631,10 @@ EndLoop:
 CheckAliensHit:
     xor a 
     ld (alienCheckCount),a
-    ld b, (RocketXPos)
-    ld c, (RocketYPos)
+    ld a, (RocketXPos)
+    ld b, a
+    ld a, (RocketYPos)
+    ld c, a
     call GetScreenPos  ; takes bc, x y coord and returns hl screen address
     push hl
     pop de ;; swap hl into de to make comparison possible
@@ -1226,6 +1309,7 @@ AlienAttributeLocations:
 
 AlienMoveCounter
     defb 0
+
 
 
 scr_addr_table:
