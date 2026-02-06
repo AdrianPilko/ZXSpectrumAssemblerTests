@@ -704,7 +704,69 @@ RocketHIT:
     xor a
     ld (hl), a
     ld (RocketFiring),a  
+    ; increase the score
+    ld hl, score3Bytes + 2 ; Start at the "units/tens" byte (rightmost)
+    ld a, (hl)
+    add a, $10            ; Add 10 in BCD hex (adds 1 to tens digit)
+    daa                   ; Fix the result to stay in decimal (0-9)
+    ld (hl), a
+    jr endCheckAliens          ; If no carry, we're finished
+
+    dec hl                ; Carry to the hundreds/thousands byte
+    ld a, (hl)
+    adc a, 0              ; Add the carry
+    daa
+    ld (hl), a
+    ; (Repeat for the third byte if needed for millions)
+endCheckAliens
+    ;call SHOW_SCORE
     ret
+score3Bytes: defb 0, 0, 0      ; Stored as: [100k/10k], [1k/100s], [10s/1s]
+
+;; WORK IN PROGRESS
+SHOW_SCORE:
+        ; --- Safety: Force Channel 2 (Screen) ---
+        LD A, 2
+        CALL 5633      ; CHAN_OPEN (0x1601)
+
+        ; --- Set Position to Top Right (0, 25) ---
+        LD A, 22       ; AT code
+        RST 16
+        XOR A          ; Row 0
+        RST 16
+        LD A, 25       ; Column 25
+        RST 16
+
+        LD HL, score3Bytes
+        LD B, 3        ; 3 bytes = 6 digits
+.print_loop:
+        PUSH BC        ; Save outer loop counter
+        PUSH HL        ; Save data pointer
+        
+        LD A, (HL)
+        RRA
+         RRA
+          RRA
+           RRA ; Get High Nibble
+        CALL PRINT_NIBBLE
+        
+        POP HL         ; Restore data pointer
+        LD A, (HL)     ; Get Low Nibble
+        CALL PRINT_NIBBLE
+        
+        INC HL         ; Move to next byte
+        POP BC         ; Restore outer loop counter
+        DJNZ .print_loop
+        RET
+
+PRINT_NIBBLE:
+        AND $0F        ; Mask to get only the digit
+        ADD A, '0'     ; Convert to ASCII
+        RST 16         ; Print it
+        RET
+
+
+
 
 
 DrawBlank24_24
