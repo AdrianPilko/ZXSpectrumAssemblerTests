@@ -476,6 +476,9 @@ Alien_1:
 
 DrawAliensThisTime:
     ld iy,AlienLocation
+    ld hl, AlienValid           ; store first alien valid address used in loop to work out where is hit
+    ld (currentAlienValidAddress), hl
+ 
     ld b, NUMBER_ALIEN_ROWS
     
 AlienDrawLoop_Rows:
@@ -490,10 +493,30 @@ AlienDrawLoop_Cols:
             ld a, 1
             ;; de already be loaded but save to stack 
             push de
+                ; do we need to draw this one?
+                push hl  
+                    ld a, (currentAlienValidAddress+0)
+                    ld l, a
+                    ld a, (currentAlienValidAddress+1)
+                    ld h, a             
+                    ld a, (hl)
+                    cp 1
+                    jp nz, skipDrawThisAlien
+                pop hl
                 push hl
+                    ld a, 1
                     call DrawHorizontalBar
                 ; now draw a blank in next l position
                 pop hl
+                push hl ; to precompensate for if the skip did not trigger
+skipDrawThisAlien:
+                ld hl, (currentAlienValidAddress)  
+                inc hl 
+                ld (currentAlienValidAddress),hl   
+
+                pop hl ; extra pop since we jumped past the one 3 lines above!
+
+
                 inc l
                 ld de, GraphicTileBlank_8x8
                 ld a, 1
@@ -682,6 +705,7 @@ RocketHIT:
     ld (hl), a
     ld (RocketFiring),a  
     ret
+
 
 DrawBlank24_24
     ld a, (SpriteXPos) ; for some reason, not sure why, if I do ld b, (SpritePosX) directly it just doesn't work?! same for ld c????
