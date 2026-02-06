@@ -76,11 +76,11 @@ MyISR:
     reti                ; Return from Interrupt
 
 
-Wait5Frames:
+WaitFrame:
     ld a, (FrameCount)
     inc a            ; Target frame, just 1
     ld b, a
-Wait5Frames_loop:
+WaitFrame_loop:
     halt                ; Wait for the next interrupt
    ; push af
    ;     ld hl, START_OF_ATTRIBUTE_SCREEN_MEM+1 ; debug
@@ -92,16 +92,16 @@ Wait5Frames_loop:
 
     ld a, (FrameCount)
     cp b                ; Compare current to target
-    jr c, Wait5Frames_loop
+    jr c, WaitFrame_loop
     ret
 
 
 FrameCount: 
     defw 0      ; Our 1-byte counter
-debugColour1:
-    defb 2
-debugColour2:
-    defb 3
+;debugColour1:
+;    defb 2
+;debugColour2:
+;    defb 3
 
 Main:
     ld a, 15
@@ -119,7 +119,7 @@ MainLoop:
     ; whole screen means run out of time before next tv frame is being drawn
 
     ;halt 
-    call Wait5Frames
+    call WaitFrame
 
     ;ld  a, 2             ; 2. Set color to RED (indicates processing start)
     ;out ($FE), A        ; Port $FE (254) controls the border
@@ -639,6 +639,8 @@ CheckAliensHit:
     push hl
     pop de ;; swap hl into de to make comparison possible
     ld iy, AlienLocation
+    ld hl, AlienValid           ; store first alien valid address used in loop to work out where is hit
+    ld (currentAlienValidAddress), hl
     ld b, NUMBER_ALIEN_ROWS  
 CheckColisAlienLoop_Rows
     push bc
@@ -647,7 +649,6 @@ CheckColisAlienLoop_Cols:
 
         ld l,(iy+0)
         ld h,(iy+1)
- 
         ld a, d
         cp h 
         jp z, checkLCollision
@@ -655,33 +656,31 @@ CheckColisAlienLoop_Cols:
 checkLCollision:
         ld a, l
         cp e
+        ld hl, (currentAlienValidAddress)    ; preload (even if no hit) the AlienValid address
+        inc hl 
         jp z, RocketHIT
+        ld (currentAlienValidAddress),hl   ; preload (even if no hit) the AlienValid address
+        
 skipCheckCollision:
         inc iy
         inc iy        
-        ld a, (alienCheckCount)
-        inc a 
-        ld (alienCheckCount),a
-
         djnz CheckColisAlienLoop_Cols
     pop bc
     djnz CheckColisAlienLoop_Rows
-    xor a 
-    ld (alienCheckCount),a
     ret
 
+currentAlienValidAddress
+    defw 0
 
 RocketHIT:  
     pop bc ; have todo this because jumps out of loop early
-    ld hl, AlienValid
-    ld a, (alienCheckCount) 
-    add a, l
+    ld a, (currentAlienValidAddress+0)
     ld l, a
-    ld (hl), 0
+    ld a, (currentAlienValidAddress+1)
+    ld h, a
     xor a
+    ld (hl), a
     ld (RocketFiring),a  
-debugStop:
-    jp debugStop
     ret
 
 DrawBlank24_24
