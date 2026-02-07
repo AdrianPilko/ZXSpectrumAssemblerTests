@@ -94,6 +94,28 @@ Main:
     ld a, 160
     ld (SpriteYPos), a
     call CLS
+
+    LD HL, 22528     ; Start of Attribute Memory
+    LD (HL), 6      
+    LD DE, 22529     ; Point to next byte
+    LD BC, 576      
+    LDIR             ; Rapid block copy
+    
+    LD HL, 22528+576     ; Start of Attribute Memory
+    LD (HL), 4      
+    LD DE, 22529+576     ; Point to next byte
+    LD BC, 127      
+    LDIR             ; Rapid block copy
+
+    LD HL, 23231    ; Start of Attribute Memory
+    LD (HL), 2       
+    LD DE, 23232     ; Point to next byte
+    LD BC, 64       ; Fill the remaining 767 bytes
+    LDIR             ; Rapid block copy
+    
+    
+
+
     call drawPlayAreaBorder
     
     ;; read keys and make to allow what for with the sprite shall move    
