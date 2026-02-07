@@ -439,8 +439,31 @@ DrawSaucerAndUpdate
     cp 28
     jp z, resetSaucer
     ld c, 8
+
     ld de, FlyingSaucer
+    ld a, (saucerFrameCount)
+    cp 1 
+    jp z, saucer_2
+    cp 2 
+    jp z, saucer_3
+    cp 3
+    jp z, saucer_4
+    jp drawSaucer ; default for zero
+saucer_2:
+    ld de, FlyingSaucer+24
+    jp drawSaucer
+saucer_3:
+    ld de, FlyingSaucer+48
+    jp drawSaucer 
+saucer_4:
+    ld de, FlyingSaucer+72
+    ld a, -1        ; reset by setting to -1 then drawSaucer will inc
+    ld (saucerFrameCount),a     
+drawSaucer:    
     call DrawSprite8x24
+    ld a, (saucerFrameCount)
+    inc a
+    ld (saucerFrameCount),a 
     ret
 resetSaucer:
     xor a 
@@ -1568,6 +1591,8 @@ alienLeftRightCount
 currentAlienValidAddress
     defw 0
 
+saucerFrameCount:
+    defb 0
 saucerTimer:
     defb 60
 saucerXPos:
@@ -1651,7 +1676,16 @@ defb %00000000,%00000001,%00011111,%01111000,%01111000,%00011111,%00000001,%0000
 defb %00000000,%11111111,%11111111,%11100011,%11100011,%11111111,%11111111,%00000000
 defb %00000000,%10000000,%11111000,%10001110,%10001110,%11111000,%10000000,%00000000
 
+defb %00000000,%00000001,%00011111,%01111100,%01111100,%00011111,%00000001,%00000000
+defb %00000000,%11111111,%11111111,%01110001,%01110001,%11111111,%11111111,%00000000
+defb %00000000,%10000000,%11111000,%11001110,%11001110,%11111000,%10000000,%00000000
 
+defb %00000000,%00000001,%00011111,%01111110,%01111110,%00011111,%00000001,%00000000
+defb %00000000,%11111111,%11111111,%00111000,%00111000,%11111111,%11111111,%00000000
+defb %00000000,%10000000,%11111000,%11101110,%11101110,%11111000,%10000000,%00000000
 
+defb %00000000,%00000001,%00011111,%01110111,%01110111,%00011111,%00000001,%00000000
+defb %00000000,%11111111,%11111111,%00011100,%00011100,%11111111,%11111111,%00000000
+defb %00000000,%10000000,%11111000,%01111110,%01111110,%11111000,%10000000,%00000000
 
 end $8000
