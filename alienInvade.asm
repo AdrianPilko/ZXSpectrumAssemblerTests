@@ -11,7 +11,7 @@ C_4_FQ: EQU $0105 / $10
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
-ALIEN_MOVE_TIMER_INIT: equ 20 
+ALIEN_MOVE_TIMER_INIT: equ 13
 ALIEN_MOVE_LIMIT: equ 13
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
 SAUCER_TIMER_INIT: equ 128
@@ -91,6 +91,8 @@ debugColour2:
 
 Main:
 
+    ld a, ALIEN_MOVE_TIMER_INIT
+    ld (AlienTimerInit), a
     ld a, 15
     ld (SpriteXPos), a
     ld a, 160
@@ -404,7 +406,7 @@ DrawAliensTimerExpired:
     call UpdateAlienPositions
     call ChooseAliens
     call DrawAliensThisTime
-    ld a, ALIEN_MOVE_TIMER_INIT
+    ld a, (AlienTimerInit)
     ld (moveAlienTimer),a
 
 
@@ -422,7 +424,7 @@ DrawAliensTimerExpired:
 
     ret
 
-DrawSaucerAndUpdate
+DrawSaucerAndUpdate    
     ld a, (saucerXPos)
     dec a
     ld b, a
@@ -456,6 +458,13 @@ DrawSaucerTimeExpired
     ld a, 1
     ld (saucerXPos), a
     ld (saucerEnabled), a
+    ; also speed the aliens up by 1
+    ld a, (AlienTimerInit)
+    dec a 
+    dec a
+    dec a
+    ld (AlienTimerInit),a
+
     ret
 
 ChooseAliens:
@@ -1564,6 +1573,8 @@ saucerTimer:
 saucerXPos:
     defb 0
 saucerEnabled:
+    defb 0
+AlienTimerInit:
     defb 0
 
 
