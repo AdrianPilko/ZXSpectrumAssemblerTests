@@ -247,7 +247,9 @@ DrawSprite:
     ld (hl),a 
     
     ld a, (RocketYPos)
-    dec a
+    ld b, -8
+    add a, b
+    
     ld (RocketYPos), a
 
     ld a, (RocketXPos)
