@@ -16,6 +16,7 @@ ALIEN_MOVE_LIMIT: equ 13
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
+TOTAL_NUM_ALIENS: equ 64
     org $8000
     defs $190
 
@@ -799,6 +800,11 @@ RocketHIT:
     xor a
     ld (hl), a
     ld (RocketFiring),a
+    ld a, (AlienHitCount)
+    inc a
+    ld (AlienHitCount),a
+    cp TOTAL_NUM_ALIENS
+    jp z, GAME_OVER_WON
     
     ; increase the score
     call increaseScore
@@ -812,6 +818,24 @@ RocketHIT:
     ; (Repeat for the third byte if needed for millions)
 endCheckAliens
     ret
+
+GAME_OVER_WON
+    LD A, 2          ; Open Channel 2 (Upper Screen)
+    CALL 5633
+    LD DE, MSG_WON       ; Address of string
+    LD BC, MSG_WON_END-MSG_WON ; Length of string
+    CALL 8252        ; ROM routine to print
+    call Delay
+stopWonNow:
+    jp stopWonNow ; Todo -> make a proper game reset work - would need all alien start positions reseting
+    ret 
+
+MSG_WON:    DEFB 22          ; AT control code
+    DEFB 10          ; Line 10 (Vertical middle)
+    DEFB 8           ; Column 8 (Horizontal start)
+    DEFB "**** YOU WON ****"
+MSG_WON_END: EQU $
+
 
 
 
@@ -1441,6 +1465,8 @@ movedLeftFlag:
 alienCheckCount
     defb 0
 ScoreChanged
+    defb 0
+AlienHitCount:
     defb 0
 AlienLocation:  ; we use the iy register to index through the possible aliens locaitons form here 
     ; row 1
