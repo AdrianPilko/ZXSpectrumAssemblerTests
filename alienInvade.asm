@@ -11,8 +11,8 @@ C_4_FQ: EQU $0105 / $10
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
-ALIEN_MOVE_TIMER_INIT: equ 10
-ALIEN_MOVE_LIMIT: equ 10
+ALIEN_MOVE_TIMER_INIT: equ 20 
+ALIEN_MOVE_LIMIT: equ 13
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
 
     org $8000
@@ -354,16 +354,9 @@ ChooseAliens:
     jp nz, Alien_1 
 Alien_2:
     ld de, AlienGraphic_8x8_2
-    ;ld hl, $5aa5 ; debug
-    ;ld a, 2
-    ;ld (hl), a
     ret
-
 Alien_1:
     ld de, AlienGraphic_8x8_1
-    ;ld hl, $5aa3 ;debug
-    ;ld a, 2
-    ;ld (hl), a
     ret
 
 DrawAliensThisTime:
@@ -410,7 +403,6 @@ notAtBottom:
                 push hl
                     ld a, 1
                     call DrawHorizontalBar
-                ; now draw a blank in next l position
                 pop hl
                 push hl ; to precompensate for if the skip did not trigger
 skipDrawThisAlien:
@@ -428,6 +420,24 @@ skipDrawThisAlien:
             pop de
         pop bc
         djnz AlienDrawLoop_Cols   
+
+        ; draw alternating rows with different alien sprite
+        ld a, (rowEvenOddToggle)
+        inc a 
+        ld (rowEvenOddToggle),a
+        bit 0, a 
+        jp nz, subtractAlienSpriteDE 
+        ld hl, -16
+        add hl, de
+        push hl 
+        pop de
+        jp nextLoopDrawAlienRow
+subtractAlienSpriteDE:
+        ld hl, 16
+        add hl, de      
+        push hl 
+        pop de
+nextLoopDrawAlienRow:
     pop bc
     djnz AlienDrawLoop_Rows
     ret
@@ -1237,6 +1247,24 @@ AlienGraphic_8x8_2:
     defb %01000010
     defb %00100100
 
+AlienGraphic_8x8_3:    
+    defb %00000000
+    defb %01000010
+    defb %00111100
+    defb %00011000
+    defb %01100110
+    defb %00111100
+    defb %00000000
+    defb %00000000
+AlienGraphic_8x8_4:   
+    defb %00000000
+    defb %00100100
+    defb %00011000
+    defb %00111100
+    defb %01100110
+    defb %00111100
+    defb %01000010
+    defb %00000000
 
 GraphicTile3_8x8:    ; a box empty for no attribute colour
     defb %00010000
@@ -1274,7 +1302,6 @@ RocketYPos:
     defb 0
 RocketFiring:
     defb 0
-
 SpriteMoveX:
     defb 0
 SpriteMoveY:
@@ -1293,7 +1320,7 @@ alienCheckCount
     defb 0
 ScoreChanged
     defb 0
-AlienLocation:  ; we use the ix register to index through the possible aliens locaitons form here 
+AlienLocation:  ; we use the iy register to index through the possible aliens locaitons form here 
     ; row 1
     defW $4042
     defW $4044
@@ -1371,23 +1398,15 @@ AlienLocation:  ; we use the ix register to index through the possible aliens lo
 
 AlienValid: ; define 64 bytes set to 1, could save memeory with bit compression, but we have a massive 48K!!!
     defs 8*8, 1
-   
-AlienAttributeLocations:
-    defW $5042
-    defW $5044
-    defW $5046
-    defW $5048
-    defW $504a
-    defW $504c
-    defW $504e
-    defW $5050
+
+rowEvenOddToggle
+    defb 0
 
 AlienMoveCounter
     defb 0
 
 alienLeftRightCount
     defb 0
-
 
 currentAlienValidAddress
     defw 0
