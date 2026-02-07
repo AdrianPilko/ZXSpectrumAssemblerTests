@@ -21,8 +21,9 @@ BEEPER: EQU $03B5
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
-ALIEN_MOVE_TIMER_INIT: equ 20
+ALIEN_MOVE_TIMER_INIT: equ 10
 ALIEN_MOVE_LIMIT: equ 10
+NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 4
 
     org $8000
     defs $190
@@ -57,13 +58,6 @@ MyISR:
         push hl
         push ix
         push iy
-
-        ;    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM ; debug
-        ;    ld a,(debugColour1)
-        ;    inc a
-        ;    ld (debugColour1),a
-        ;    ld (hl), a
-
             ld hl, FrameCount
             inc (hl)
         pop iy
@@ -82,13 +76,13 @@ WaitFrame:
     ld b, a
 WaitFrame_loop:
     halt                ; Wait for the next interrupt
-   ; push af
-   ;     ld hl, START_OF_ATTRIBUTE_SCREEN_MEM+1 ; debug
-   ;     ld a,(debugColour2)
-   ;     inc a
-   ;     ld (debugColour2),a
-   ;     ld (hl), a
-   ; pop af
+    ;push af
+    ;    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM+1 ; debug
+    ;    ld a,(debugColour2)
+    ;    inc a
+    ;    ld (debugColour2),a
+    ;    ld (hl), a
+    ;pop af
 
     ld a, (FrameCount)
     cp b                ; Compare current to target
@@ -98,12 +92,13 @@ WaitFrame_loop:
 
 FrameCount: 
     defw 0      ; Our 1-byte counter
-;debugColour1:
-;    defb 2
-;debugColour2:
-;    defb 3
+debugColour1:
+    defb 2
+debugColour2:
+    defb 3
 
 Main:
+
     ld a, 15
     ld (SpriteXPos), a
     ld a, 160
@@ -117,18 +112,17 @@ MainLoop:
     ; the bits comments out here are debug to give an indication
     ; of the cpu cycles being used, when the red boarder fills the
     ; whole screen means run out of time before next tv frame is being drawn
-
-    ;halt 
-    call SHOW_SCORE
-    
+  
     call WaitFrame
+    
+    call z, SHOW_SCORE
 
-    ;ld  a, 2             ; 2. Set color to RED (indicates processing start)
-    ;out ($FE), A        ; Port $FE (254) controls the border
+;    ld  a,5             ; 2. Set color to RED (indicates processing start)
+;    out ($FE), A        ; Port $FE (254) controls the border
     call ScanTheKeyBoard      ; 3. Run your main program logic here
     
-    ;ld a, 0             ; 4. Set color to BLACK (indicates processing end)
-    ;out ($FE), A
+;    ld a, 0             ; 4. Set color to BLACK (indicates processing end)
+;    out ($FE), A
     ; Any remaining space in the border is "idle" time
     jp MainLoop
 
@@ -495,8 +489,16 @@ resetAlienRow:
 
     ;; now move all the aliens down one
     ;; but first have to blank the top row as this will no longer have aliens
+    
+    ;; only moveAliens down if they've been left right 4 times
+    ld a, (alienLeftRightCount)
+    inc a 
+    ld (alienLeftRightCount),a 
+    cp NUMBER_OF_LEFT_RIGHTS_ALIENS
+    ret nz
 
-
+    xor a
+    ld (alienLeftRightCount),a 
     ld iy, AlienLocation
     ld b, NUMBER_ALIEN_IN_ROW
 AlienBlankTopRowLoop_Cols:
@@ -536,6 +538,8 @@ SkipCarrayAddMoveAlienDown:
         djnz AlienPosDownLoop_Cols
     pop bc
     djnz AlienPosDownLoop_Rows
+
+skipMoveAliensDown:
     ret
 
 ;; should never get here
@@ -546,6 +550,8 @@ CheckAliensHit:
     ld a, (RocketFiring)
     cp 1                    ;; only check if rocket is in flight
     jp nz, EndCheckAliensHit
+    ld a, 0
+    ld (ScoreChanged), a
 
     xor a 
     ld (alienCheckCount),a
@@ -599,19 +605,19 @@ EndCheckAliensHit
 
 RocketHIT:  
     pop bc ; have todo this because jumps out of loop early
+    ld a, 1
+    ld (ScoreChanged), a
+
     ld a, (currentAlienValidAddress+0)
     ld l, a
     ld a, (currentAlienValidAddress+1)
     ld h, a
     xor a
     ld (hl), a
-    ld (RocketFiring),a  
+    ld (RocketFiring),a
+    
     ; increase the score
-    ld hl, score3Bytes + 2 ; Start at the "units/tens" byte (rightmost)
-    ld a, (hl)
-    add a, $10            ; Add 10 in BCD hex (adds 1 to tens digit)
-    daa                   ; Fix the result to stay in decimal (0-9)
-    ld (hl), a
+    call increaseScore
     jr endCheckAliens          ; If no carry, we're finished
 
     dec hl                ; Carry to the hundreds/thousands byte
@@ -623,49 +629,90 @@ RocketHIT:
 endCheckAliens
     ret
 
-SHOW_SCORE:
-        ; --- Safety: Force Channel 2 (Screen) ---
-        LD A, 2
-        CALL 5633      ; CHAN_OPEN (0x1601)
-
-        ; --- Set Position to Top Right (0, 25) ---
-        LD A, 22       ; AT code
-        RST 16
-        XOR A          ; Row 0
-        RST 16
-        LD A, 25       ; Column 25
-        RST 16
-
-        LD HL, score3Bytes
-        LD B, 3        ; 3 bytes = 6 digits
-.print_loop:
-        PUSH BC        ; Save outer loop counter
-        PUSH HL        ; Save data pointer
-        
-        LD A, (HL)
-        RRA
-         RRA
-          RRA
-           RRA ; Get High Nibble
-        CALL PRINT_NIBBLE
-        
-        POP HL         ; Restore data pointer
-        LD A, (HL)     ; Get Low Nibble
-        CALL PRINT_NIBBLE
-        
-        INC HL         ; Move to next byte
-        POP BC         ; Restore outer loop counter
-        DJNZ .print_loop
-        RET
-
-PRINT_NIBBLE:
-        AND $0F        ; Mask to get only the digit
-        ADD A, '0'     ; Convert to ASCII
-        RST 16         ; Print it
-        RET
 
 
+; --- ADDITION ROUTINE (Fixes the $10 jump) ---
+increaseScore:
+    ld hl, score3Bytes + 2 ; Point to the LAST byte (Units/Tens)
+    ld a, (hl)
+    add a, $10           ; Use $01 (hex) or 1 (decimal). DO NOT use $10.
+    daa                  ; Decimal Adjust: Corrects binary to BCD
+    ld (hl), a
+    ret nc               ; If no carry, we are done
+    
+    dec hl               ; Carry to middle byte
+    ld a, (hl)
+    adc a, 0             ; Add carry
+    daa
+    ld (hl), a
+    ret nc
+    
+    dec hl               ; Carry to first byte
+    ld a, (hl)
+    adc a, 0
+    daa
+    ld (hl), a
+    ret
 
+; --- MAIN PRINT ROUTINE ---
+
+SHOW_SCORE
+    ld hl, score3Bytes    ; Point to your score
+    ld de, $4000        ; Top-left pixel address
+    ld b, 3             ; Loop for 3 bytes (6 digits)
+
+.byteLoop:
+    push bc             ; Save byte counter
+    ld a, (hl)          ; Get current BCD byte (e.g., $05)
+    push hl             ; Save score pointer
+    
+    ; --- 1. Handle High Nibble (Tens) ---
+    push af             ; Save byte for later
+    rrca
+    rrca
+    rrca
+    rrca ; Move high 4 bits to low 4 bits
+    call .renderDigit   ; Print it
+    inc e               ; Move screen pointer 1 character right
+    
+    ; --- 2. Handle Low Nibble (Units) ---
+    pop af              ; Restore byte
+    call .renderDigit   ; Print it
+    inc e               ; Move screen pointer 1 character right
+    
+    pop hl              ; Restore score pointer
+    inc hl              ; Point to next byte in ScoreData
+    pop bc              ; Restore byte counter
+    djnz .byteLoop      ; Repeat for all 3 bytes
+    ret
+
+; --- INTERNAL DIGIT RENDERER ---
+.renderDigit:
+    and $0F             ; MASK: Keep only 0-9. Prevents 'P' overflow.
+    
+    ; Calculate ROM Font Address
+    ; '0' is at $3D00 + (48 * 8) = $3E80
+    push hl             ; Save HL (the score pointer)
+    ld l, a             ; Put digit in L
+    ld h, 0             ; CLEAR H: If H is not 0, you get 'P'
+    add hl, hl          ; * 2
+    add hl, hl          ; * 4
+    add hl, hl          ; * 8
+    ld bc, $3D80        ; Base address of '0' in ROM
+    add hl, bc          ; HL = Exact address of digit graphics
+    
+    ; Draw 8 scanlines to screen
+    push de             ; Save screen position
+    ld b, 8             ; 8 pixel rows
+.line:
+    ld a, (hl)          ; Get font byte
+    ld (de), a          ; Write to screen
+    inc hl
+    inc d               ; Move down 1 scanline (adds 256 to address)
+    djnz .line
+    pop de              ; Restore screen position for next digit
+    pop hl              ; Restore score pointer
+    ret
 
 
 DrawBlank24_24
@@ -1202,6 +1249,8 @@ movedLeftFlag:
     defb 0
 alienCheckCount
     defb 0
+ScoreChanged
+    defb 0
 AlienLocation:  ; we use the ix register to index through the possible aliens locaitons form here 
     ; row 1
     defW $4042
@@ -1294,6 +1343,9 @@ AlienAttributeLocations:
 AlienMoveCounter
     defb 0
 
+alienLeftRightCount
+    defb 0
+
 
 currentAlienValidAddress
     defw 0
@@ -1324,7 +1376,7 @@ scr_addr_table:
 	dw &50C0,&51C0,&52C0,&53C0,&54C0,&55C0,&56C0,&57C0
 	dw &50E0,&51E0,&52E0,&53E0,&54E0,&55E0,&56E0,&57E0
 
-score3Bytes: defb 0, 0, 0      ; Stored as: [100k/10k], [1k/100s], [10s/1s]
+score3Bytes: defb 0,0,0      ; Stored as: [100k/10k], [1k/100s], [10s/1s]
 
 SpriteBlank_24x24:
     defs 8*9, 0
