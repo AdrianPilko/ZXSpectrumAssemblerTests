@@ -300,13 +300,14 @@ DrawSprite:
     ld (hl),a 
         
     ld a, (RocketYPos)
-    cp 9
     jp z, resetRocket
     cp 8
     jp z, resetRocket
     cp 7
     jp z, resetRocket
     cp 6
+    jp z, resetRocket
+    cp 5
     jp z, resetRocket
         
     jp ActuallyDrawSprite
