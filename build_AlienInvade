@@ -1,0 +1,2 @@
+rm -f  alienInvade.tap
+pasmo -1 --tapbas alienInvade.asm alienInvade.tap
