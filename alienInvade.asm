@@ -98,14 +98,22 @@ Main:
     LD HL, 22528     ; Start of Attribute Memory
     LD (HL), 6      
     LD DE, 22529     ; Point to next byte
-    LD BC, 640     
+    LD BC, 544     
     LDIR             ; Rapid block copy
     
-    LD HL, 22528+640     ; Start of Attribute Memory
-    LD (HL), 4      
-    LD DE, 22529+640     ; Point to next byte
-    LD BC, 127      
+    LD HL, 22528+544     ; Start of Attribute Memory
+    LD (HL), 5      
+    LD DE, 22529+544     ; Point to next byte
+    LD BC, 96      
     LDIR             ; Rapid block copy
+
+
+    LD HL, 22528+640     ; Start of Attribute Memory
+    LD (HL), 4     
+    LD DE, 22529+640     ; Point to next byte
+    LD BC, 127     
+    LDIR             ; Rapid block copy
+
 
     LD HL, 23231    ; Start of Attribute Memory
     LD (HL), 2       
@@ -114,6 +122,7 @@ Main:
     LDIR             ; Rapid block copy
 
     call drawPlayAreaBorder
+    call drawShields
     
     ;; read keys and make to allow what for with the sprite shall move    
 
@@ -458,6 +467,27 @@ MSG:    DEFB 22          ; AT control code
     DEFB "*** GAME OVER ***"
 MSG_END: EQU $
 
+
+
+drawShields:
+    ld de, Shield_24x16
+    ld b,4
+    ld c,140
+    call DrawSprite24x24
+    ld de, Shield_24x16
+    ld b,11
+    ld c,140
+    call DrawSprite24x24
+    ld de, Shield_24x16
+    ld b,18
+    ld c,140
+    call DrawSprite24x24
+    ld de, Shield_24x16
+    ld b,25
+    ld c,140
+    call DrawSprite24x24
+
+    ret 
 
 
 UpdateAlienPositions:
@@ -1266,16 +1296,6 @@ AlienGraphic_8x8_4:
     defb %11000011
     defb %00000000
 
-GraphicTile3_8x8:    ; a box empty for no attribute colour
-    defb %00010000
-    defb %00010000
-    defb %00010000
-    defb %00010000
-    defb %00010000
-    defb %00010000
-    defb %00010000
-    defb %11111111
-
 GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
     defb %00000000
@@ -1466,5 +1486,15 @@ defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000010,%00000000,%0000
 defb %10010000,%00101000,%10010010,%00100010,%10000100,%00010010,%00000000,%00000000
 defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000
 defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000
+
+Shield_24x16:
+defb %00001111,%00011111,%00111111,%01111111,%11111111,%11111100,%11111110,%11111110
+defb %11111111,%11111111,%11111111,%11111111,%11111111,%00000000,%00000000,%00000000
+defb %11110000,%11111000,%11111100,%11111110,%11111111,%00111111,%01111111,%01111111
+defb %11111100,%11111111,%11111111,%11111111,%11111111,%11111111,%11111110,%11111100
+defb %00000000,%11111111,%11111111,%11111111,%11111111,%11111111,%00000000,%00000000
+defb %00111111,%11111111,%11111111,%11111111,%11111111,%11111111,%01111111,%00111111
+
+
 
 end $8000
