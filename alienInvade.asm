@@ -14,7 +14,7 @@ NUMBER_ALIEN_ROWS: equ 8
 ALIEN_MOVE_TIMER_INIT: equ 20 
 ALIEN_MOVE_LIMIT: equ 13
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
-
+SAUCER_TIMER_INIT: equ 128
     org $8000
     defs $190
 
@@ -342,17 +342,65 @@ ReallyDrawSprite:
     dec a
     ld (moveAlienTimer),a
     cp 1
-    jp z, DrawAliensTimerExpired
+    call z, DrawAliensTimerExpired
     ret
-
-
 
 DrawAliensTimerExpired:
     call UpdateAlienPositions
     call ChooseAliens
-    call DrawAliensThisTime       
+    call DrawAliensThisTime
     ld a, ALIEN_MOVE_TIMER_INIT
     ld (moveAlienTimer),a
+
+
+    ld a, (saucerEnabled)
+    cp 1
+    call z, DrawSaucerAndUpdate
+
+
+
+    ld a, (saucerTimer)
+    dec a
+    ld (saucerTimer),a
+    cp 1
+    call z, DrawSaucerTimeExpired
+
+    ret
+
+DrawSaucerAndUpdate
+    ld a, (saucerXPos)
+    dec a
+    ld b, a
+    ld c, 8
+    ld de, SpriteBlank_24x24
+    call DrawSprite8x24
+
+    ld a, (saucerXPos)
+    ld b, a
+    inc a 
+    ld (saucerXPos),a
+    cp 28
+    jp z, resetSaucer
+    ld c, 8
+    ld de, FlyingSaucer
+    call DrawSprite8x24
+    ret
+resetSaucer:
+    xor a 
+    ld (saucerEnabled),a
+    ld a, 1
+    ld (saucerXPos),a   
+    ld a, SAUCER_TIMER_INIT
+    ld (saucerTimer),a
+    ret 
+
+
+DrawSaucerTimeExpired
+    ld a, SAUCER_TIMER_INIT
+    ld (saucerTimer), a 
+    ld a, 1
+    ld (saucerXPos), a
+    ld (saucerEnabled), a
     ret
 
 ChooseAliens:
@@ -1431,6 +1479,14 @@ alienLeftRightCount
 currentAlienValidAddress
     defw 0
 
+saucerTimer:
+    defb 60
+saucerXPos:
+    defb 0
+saucerEnabled:
+    defb 0
+
+
 scr_addr_table:
 	dw &4000,&4100,&4200,&4300,&4400,&4500,&4600,&4700
 	dw &4020,&4120,&4220,&4320,&4420,&4520,&4620,&4720
@@ -1494,6 +1550,16 @@ defb %11110000,%11111000,%11111100,%11111110,%11111111,%00111111,%01111111,%0111
 defb %11111100,%11111111,%11111111,%11111111,%11111111,%11111111,%11111110,%11111100
 defb %00000000,%11111111,%11111111,%11111111,%11111111,%11111111,%00000000,%00000000
 defb %00111111,%11111111,%11111111,%11111111,%11111111,%11111111,%01111111,%00111111
+defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000
+defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000
+defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000
+
+FlyingSaucer:
+
+defb %00000000,%00000001,%00011111,%01111000,%01111000,%00011111,%00000001,%00000000
+defb %00000000,%11111111,%11111111,%11100011,%11100011,%11111111,%11111111,%00000000
+defb %00000000,%10000000,%11111000,%10001110,%10001110,%11111000,%10000000,%00000000
+
 
 
 
