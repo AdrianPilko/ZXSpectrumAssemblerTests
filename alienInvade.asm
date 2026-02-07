@@ -1249,21 +1249,21 @@ AlienGraphic_8x8_2:
 
 AlienGraphic_8x8_3:    
     defb %00000000
-    defb %01000010
-    defb %00111100
-    defb %00011000
-    defb %01100110
-    defb %00111100
     defb %00000000
+    defb %01000010
+    defb %00100100
+    defb %00011000
+    defb %00100100
+    defb %01000010
     defb %00000000
 AlienGraphic_8x8_4:   
     defb %00000000
-    defb %00100100
-    defb %00011000
+    defb %00000000
+    defb %11000011
+    defb %01111110
     defb %00111100
-    defb %01100110
-    defb %00111100
-    defb %01000010
+    defb %01111110
+    defb %11000011
     defb %00000000
 
 GraphicTile3_8x8:    ; a box empty for no attribute colour
