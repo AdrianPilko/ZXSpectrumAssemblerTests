@@ -13,7 +13,7 @@ NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
 ALIEN_MOVE_TIMER_INIT: equ 10
 ALIEN_MOVE_LIMIT: equ 10
-NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 4
+NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
 
     org $8000
     defs $190
@@ -375,7 +375,17 @@ AlienDrawLoop_Cols:
                     jp nz, skipDrawThisAlien
                 pop hl
                 ;;  the alien is valid check the alien did not reach the bottom
-                
+                ld a, $50
+                cp h
+                jp nz, notAtBottom
+                ld a, $6f
+                cp l
+                jp nz, notAtBottom
+                pop de 
+                pop bc 
+                pop bc
+                call GAME_OVER
+notAtBottom:
                 push hl
                     ld a, 1
                     call DrawHorizontalBar
@@ -400,6 +410,23 @@ skipDrawThisAlien:
     pop bc
     djnz AlienDrawLoop_Rows
     ret
+
+GAME_OVER:
+    LD A, 2          ; Open Channel 2 (Upper Screen)
+    CALL 5633
+    LD DE, MSG       ; Address of string
+    LD BC, MSG_END-MSG ; Length of string
+    CALL 8252        ; ROM routine to print
+    call Delay
+    jp GAME_OVER ; Todo -> make a proper game reset work - would need all alien start positions reseting
+    ret 
+
+MSG:    DEFB 22          ; AT control code
+    DEFB 10          ; Line 10 (Vertical middle)
+    DEFB 8           ; Column 8 (Horizontal start)
+    DEFB "*** GAME OVER ***"
+MSG_END: EQU $
+
 
 
 UpdateAlienPositions:
