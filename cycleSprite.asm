@@ -8,16 +8,6 @@ C_5_FQ: EQU $020B / $10
 C_4: EQU $066E
 C_4_FQ: EQU $0105 / $10
 
-BEEPER: EQU $03B5
-;--------------------------------------------------
-; ROM Routine similar to Basic AT
-; Position the cursor at the specified coordinates.
-; Input: B -> Y-coordinate.
-; C -> X-coordinate.
-; In this routine, the top left-hand corner of the
-; screen it is (24, 33).
-; Alters the value of the A, DE and HL registers.
-; -------------------------------------------------
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
@@ -287,10 +277,6 @@ resetRocket:
     ld hl, $27a0
     ; DE = frequency
     ld de, $2b/$20
-    ;ld hl, C_4
-    ; DE = duration (frequency)
-    ;ld de, C_4_FQ
-    ; Jumps to beep
     call beep
     ld a, 0 
     ld (RocketFiring), a
@@ -388,6 +374,8 @@ AlienDrawLoop_Cols:
                     cp 1
                     jp nz, skipDrawThisAlien
                 pop hl
+                ;;  the alien is valid check the alien did not reach the bottom
+                
                 push hl
                     ld a, 1
                     call DrawHorizontalBar
@@ -605,6 +593,12 @@ EndCheckAliensHit
 
 RocketHIT:  
     pop bc ; have todo this because jumps out of loop early
+
+
+    call beep
+    ld a, 0 
+    ld (RocketFiring), a
+
     ld a, 1
     ld (ScoreChanged), a
 
