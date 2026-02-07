@@ -15,6 +15,7 @@ ALIEN_MOVE_TIMER_INIT: equ 20
 ALIEN_MOVE_LIMIT: equ 13
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
 SAUCER_TIMER_INIT: equ 128
+SAUCER_Y_POS: equ 8
     org $8000
     defs $190
 
@@ -274,8 +275,52 @@ DrawSprite:
     ld b, a
     ld a, (RocketYPos)
     ld c, a
-    call GetScreenPos
+    ;; check if hit saucer, if enabled
+    ld a, (saucerEnabled)
+    cp 1
+    jp nz, saucerHitCheckSkip
+
+    ld a, (saucerXPos)
+    cp b
+    jp nz, saucerHitCheckSkip
+
+    ;ld a, SAUCER_Y_POS+1
+    ;cp c
+    ;jp z, saucerHit
+    ;ld a, SAUCER_Y_POS+2
+    ;cp c
+    ;jp z, saucerHit
+    ;ld a, SAUCER_Y_POS+3
+    ;cp c
+    ;jp z, saucerHit
+    ;ld a, SAUCER_Y_POS+4
+    ;cp c
+    ;jp z, saucerHit
+    ;jp saucerHitCheckSkip
     
+  ;; got this far then reset saucer and increase score
+saucerHit:
+    ld a, (saucerXPos)
+    dec a
+    ld b, a
+    ld c, SAUCER_Y_POS
+    ld de, SpriteBlank_24x24
+    call DrawSprite8x24
+
+    xor a
+    ld (saucerEnabled), a
+    ld (saucerXPos), a
+    call increaseScore
+    call increaseScore
+    call increaseScore
+    call increaseScore
+
+saucerHitCheckSkip:
+    ld a, (RocketXPos)
+    ld b, a
+    ld a, (RocketYPos)
+    ld c, a
+    call GetScreenPos
     ld a, %00000000
     ld (hl),a 
     call PreviousScan
@@ -380,7 +425,7 @@ DrawSaucerAndUpdate
     ld a, (saucerXPos)
     dec a
     ld b, a
-    ld c, 8
+    ld c, SAUCER_Y_POS
     ld de, SpriteBlank_24x24
     call DrawSprite8x24
 
