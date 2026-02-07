@@ -100,7 +100,15 @@ Main:
     LD DE, 22529     ; Point to next byte
     LD BC, 544     
     LDIR             ; Rapid block copy
-    
+
+    LD HL, 22528     ; Start of Attribute Memory
+    LD (HL), 3      
+    LD DE, 22529     ; Point to next byte
+    LD BC, 64     
+    LDIR             ; Rapid block copy
+ 
+ 
+
     LD HL, 22528+544     ; Start of Attribute Memory
     LD (HL), 5      
     LD DE, 22529+544     ; Point to next byte
@@ -227,7 +235,7 @@ MoveSpriteRight:
     call DrawBlank24_24
     ld a, (SpriteXPos)
     inc a
-    cp 28
+    cp 30
     jp z, DrawSprite
     ld (SpriteXPos),a        
     jp DrawSprite
