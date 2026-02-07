@@ -98,12 +98,12 @@ Main:
     LD HL, 22528     ; Start of Attribute Memory
     LD (HL), 6      
     LD DE, 22529     ; Point to next byte
-    LD BC, 576      
+    LD BC, 640     
     LDIR             ; Rapid block copy
     
-    LD HL, 22528+576     ; Start of Attribute Memory
+    LD HL, 22528+640     ; Start of Attribute Memory
     LD (HL), 4      
-    LD DE, 22529+576     ; Point to next byte
+    LD DE, 22529+640     ; Point to next byte
     LD BC, 127      
     LDIR             ; Rapid block copy
 
@@ -112,9 +112,6 @@ Main:
     LD DE, 23232     ; Point to next byte
     LD BC, 64       ; Fill the remaining 767 bytes
     LDIR             ; Rapid block copy
-    
-    
-
 
     call drawPlayAreaBorder
     
