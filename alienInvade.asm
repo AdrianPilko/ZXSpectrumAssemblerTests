@@ -413,10 +413,11 @@ DrawAliensTimerExpired:
     cp 1
     call z, DrawSaucerTimeExpired
 
-    ld a, (alienFireToggle)  ; basically we want an alien shot in flight all the time
-    inc a
-    bit 0, a
-    jp z, isShotInFlight
+;    ld a, (alienFireToggle)  ; basically we want an alien shot in flight all the time
+ ;   inc a
+  ;  bit 0, a
+   ; call z, isShotInFlight
+    ;ret 
 
 isShotInFlight:
     ld a, (alienShotInFlightFlag)
@@ -426,14 +427,13 @@ isShotInFlight:
     ;; setup the alien shot
     ld a, 1
     ld (alienShotInFlightFlag), a 
-;debugStop1:
-;    jp debugStop1
+
     ;; we need to chose one of the bottom layer aliens to shoot
     ;; this is more problematic than it appears as we probably 
     ;; need to store the screen address of the bottom most alien
     ;; in each column
     
-    call findTheFirstLowestAlien ; Returns index (0-63) in A
+    call findTheFirstLowestAlien ; Returns index (0-63) in d
     ld l, d
     ld h, 0
     ld de, AlienLocation     ; Point to your list of screen addresses
@@ -444,18 +444,40 @@ isShotInFlight:
     ld l, a
     ld (alienShotAddress), hl    ; HL is now the correct screen address
 
-    ;ld hl, $4848  
-    ld (alienShotAddress), hl
-
 skipAlienFireAsInProgress:
     ld hl, (alienShotAddress)  
-    ld a, %00000000
-    ld (hl), a
-    call NextScan
-    call NextScan
-    ld a, %00011000
-    ld (hl), a
+    ; 1. Erase current position 
+    ld (hl), 0                
+    ; 2. Calculate next scanline
+    call NextScan             ; Assuming this calculates the next pixel row
+    ; 3. Check for boundary ($5800)
+    ld a, h                   ; The high byte of screen memory is $40 to $57
+    cp $58                    ; Have we hit the attributes?
+    jr nc, .shotFinished      ; If H >= $58, the shot reached the bottom
+    call NextScan             ; Assuming this calculates the next pixel row
+    ; 3. Check for boundary ($5800)
+    ld a, h                   ; The high byte of screen memory is $40 to $57
+    cp $58                    ; Have we hit the attributes?
+    jr nc, .shotFinished      ; If H >= $58, the shot reached the bottom
+    call NextScan             ; Assuming this calculates the next pixel row
+    ; 3. Check for boundary ($5800)
+    ld a, h                   ; The high byte of screen memory is $40 to $57
+    cp $58                    ; Have we hit the attributes?
+    jr nc, .shotFinished      ; If H >= $58, the shot reached the bottom
+        
+
+
+    ; 4. Otherwise, save and draw
     ld (alienShotAddress), hl
+    ld a, %00011000           ; Shot graphic
+    ld (hl), a
+    ret
+
+.shotFinished:
+    ld hl, 0
+    ld (alienShotAddress), hl ; Set to 0 to indicate no active shot
+    xor a 
+    ld (alienShotInFlightFlag),a
     ret
 
 
@@ -475,18 +497,14 @@ find_first_max:
     ; If we are here, Current > Max
     ld e, a              ; Update max value
     ld d, c              ; Update index of the first highest
-    ld (currentMaxAlienAddress), hl
 
 skip:
     inc hl               ; Point to next memory location
     inc c                ; Increment index tracker
     djnz find_first_max  ; Loop until B = 0
     ; Result: D = Index of the first occurrence of the highest value
-    ; currentMaxAlienAddress is the address
    ret
 
-currentMaxAlienAddress:
-    defw 0
 
 DrawSaucerAndUpdate    
     ld a, (saucerXPos)
