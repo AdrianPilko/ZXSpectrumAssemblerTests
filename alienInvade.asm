@@ -398,9 +398,11 @@ DrawAliensTimerExpired:
     call ChooseAliens
     call DrawAliensThisTime
 
+    ;; reset alien move timer. -the aliens move at lower rate than the space ship
     ld a, (AlienTimerInit)
     ld (moveAlienTimer),a
 
+    ;; other times controlling the flying saucer power up and other things
     ld a, (saucerEnabled)
     cp 1
     call z, DrawSaucerAndUpdate
@@ -411,7 +413,80 @@ DrawAliensTimerExpired:
     cp 1
     call z, DrawSaucerTimeExpired
 
+    ld a, (alienFireToggle)  ; basically we want an alien shot in flight all the time
+    inc a
+    bit 0, a
+    jp z, isShotInFlight
+
+isShotInFlight:
+    ld a, (alienShotInFlightFlag)
+    cp 1
+    jp z, skipAlienFireAsInProgress
+
+    ;; setup the alien shot
+    ld a, 1
+    ld (alienShotInFlightFlag), a 
+;debugStop1:
+;    jp debugStop1
+    ;; we need to chose one of the bottom layer aliens to shoot
+    ;; this is more problematic than it appears as we probably 
+    ;; need to store the screen address of the bottom most alien
+    ;; in each column
+    
+    call findTheFirstLowestAlien ; Returns index (0-63) in A
+    ld l, d
+    ld h, 0
+    ld de, AlienLocation     ; Point to your list of screen addresses
+    add hl, de
+    ld a, (hl)                   ; Get low byte of address
+    inc hl
+    ld h, (hl)                   ; Get high byte of address
+    ld l, a
+    ld (alienShotAddress), hl    ; HL is now the correct screen address
+
+    ;ld hl, $4848  
+    ld (alienShotAddress), hl
+
+skipAlienFireAsInProgress:
+    ld hl, (alienShotAddress)  
+    ld a, %00000000
+    ld (hl), a
+    call NextScan
+    call NextScan
+    ld a, %00011000
+    ld (hl), a
+    ld (alienShotAddress), hl
     ret
+
+
+findTheFirstLowestAlien:
+    ld hl, AlienLocation ; HL points to the start of your 64 bytes
+    ld b, NUMBER_ALIEN_IN_ROW*NUMBER_ALIEN_ROWS    ; Loop counter
+    ld c, 0              ; Current index (0-63)
+    ld d, 0              ; Storage for the "first highest" index
+    ld e, 0              ; Current max value (starts at 0)
+
+find_first_max:
+    ld a, (hl)           ; Load current memory value
+    cp e                 ; Compare with our current max (E)
+    jr z, skip           ; If Equal, skip (keeps the EARLIER index)
+    jr c, skip           ; If Current < Max, skip
+    
+    ; If we are here, Current > Max
+    ld e, a              ; Update max value
+    ld d, c              ; Update index of the first highest
+    ld (currentMaxAlienAddress), hl
+
+skip:
+    inc hl               ; Point to next memory location
+    inc c                ; Increment index tracker
+    djnz find_first_max  ; Loop until B = 0
+    ; Result: D = Index of the first occurrence of the highest value
+    ; currentMaxAlienAddress is the address
+   ret
+
+currentMaxAlienAddress:
+    defw 0
 
 DrawSaucerAndUpdate    
     ld a, (saucerXPos)
@@ -1589,6 +1664,13 @@ saucerXPos:
 saucerEnabled:
     defb 0
 AlienTimerInit:
+    defb 0
+
+alienShotAddress:
+    defw 0
+alienFireToggle:
+    defb 0
+alienShotInFlightFlag:
     defb 0
 
 
