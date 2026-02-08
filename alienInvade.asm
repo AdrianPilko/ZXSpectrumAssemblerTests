@@ -269,6 +269,7 @@ setupRocket:
 
 
 DrawSprite:    
+    call isShotInFlight
     ; if rocket firing then draw 
     ld a, (RocketFiring)
     cp 1
@@ -412,7 +413,8 @@ DrawAliensTimerExpired:
     ld (saucerTimer),a
     cp 1
     call z, DrawSaucerTimeExpired
-
+    
+    ret
 ;    ld a, (alienFireToggle)  ; basically we want an alien shot in flight all the time
  ;   inc a
   ;  bit 0, a
@@ -445,7 +447,33 @@ isShotInFlight:
     ld (alienShotAddress), hl    ; HL is now the correct screen address
 
 skipAlienFireAsInProgress:
+    ld de, (alienShotAddress)  
+
+    ; check if hit space ship
+    ld a, (SpriteXPos)
+    ld b, a
+    ld a, (SpriteYPos)
+    ld c, a
+    call GetScreenPos
+    ; hl now contains the address
+    ld a, d
+    cp h
+    jp z, checkShotHitPlayerLower
+    jp skipCheckAlienHitPlayer
+checkShotHitPlayerLower:
+    ld a, e
+    cp l
+    jp z, GAME_OVER
+    inc l   ; check next
+    cp l
+    jp z, GAME_OVER
+    inc l   ; check next
+    cp l
+    jp z, GAME_OVER
+    ;;; NEVER GETS HERE
+skipCheckAlienHitPlayer:
     ld hl, (alienShotAddress)  
+
     ; 1. Erase current position 
     ld (hl), 0                
     ; 2. Calculate next scanline
@@ -459,13 +487,6 @@ skipAlienFireAsInProgress:
     ld a, h                   ; The high byte of screen memory is $40 to $57
     cp $58                    ; Have we hit the attributes?
     jr nc, .shotFinished      ; If H >= $58, the shot reached the bottom
-    call NextScan             ; Assuming this calculates the next pixel row
-    ; 3. Check for boundary ($5800)
-    ld a, h                   ; The high byte of screen memory is $40 to $57
-    cp $58                    ; Have we hit the attributes?
-    jr nc, .shotFinished      ; If H >= $58, the shot reached the bottom
-        
-
 
     ; 4. Otherwise, save and draw
     ld (alienShotAddress), hl
@@ -482,6 +503,7 @@ skipAlienFireAsInProgress:
 
 
 findTheFirstLowestAlien:
+    ld ix, AlienValid
     ld hl, AlienLocation ; HL points to the start of your 64 bytes
     ld b, NUMBER_ALIEN_IN_ROW*NUMBER_ALIEN_ROWS    ; Loop counter
     ld c, 0              ; Current index (0-63)
@@ -489,6 +511,15 @@ findTheFirstLowestAlien:
     ld e, 0              ; Current max value (starts at 0)
 
 find_first_max:
+    push hl     ; check if the alien is valid
+        ld l, (ix+0)
+        ld h, (ix+1)
+        inc ix 
+        inc ix 
+        ld a, (hl)
+    pop hl  ; does not affect Z flag
+    cp 1
+    jp nz, skip 
     ld a, (hl)           ; Load current memory value
     cp e                 ; Compare with our current max (E)
     jr z, skip           ; If Equal, skip (keeps the EARLIER index)
