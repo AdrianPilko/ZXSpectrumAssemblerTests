@@ -643,15 +643,13 @@ AlienDrawLoop_Cols:
                     ld h, a             
                     ld a, (hl)
                     cp 1
-                    jp nz, skipDrawThisAlien
                 pop hl
+                jp nz, skipDrawThisAlien
                 ;;  the alien is valid check the alien did not reach the bottom
-                ld a, $50
+                ld a, $58
                 cp h
                 jp nz, notAtBottom
-                ld a, $6f
-                cp l
-                jp nz, notAtBottom
+                
                 pop de 
                 pop bc 
                 pop bc
@@ -661,19 +659,15 @@ notAtBottom:
                     ld a, 1
                     call DrawHorizontalBar
                 pop hl
-                push hl ; to precompensate for if the skip did not trigger
 skipDrawThisAlien:
-                ld hl, (currentAlienValidAddress)  
-                inc hl 
-                ld (currentAlienValidAddress),hl   
-
-                pop hl ; extra pop since we jumped past the one 3 lines above!
-
-
                 inc l
                 ld de, GraphicTileBlank_8x8
                 ld a, 1
                 call DrawHorizontalBar
+
+                ld hl, (currentAlienValidAddress)  
+                inc hl 
+                ld (currentAlienValidAddress),hl   
             pop de
         pop bc
         djnz AlienDrawLoop_Cols   
