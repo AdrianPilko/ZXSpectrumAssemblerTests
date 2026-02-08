@@ -139,21 +139,21 @@ Main:
     ;; read keys and make to allow what for with the sprite shall move    
 
 MainLoop:
-    ; the bits comments out here are debug to give an indication
-    ; of the cpu cycles being used, when the red boarder fills the
+    ; the ld a,5 ; out ($fe) ,  here are debug to give an indication
+    ; of the cpu cycles being used, when the colour boarder fills the
     ; whole screen means run out of time before next tv frame is being drawn
   
     call WaitFrame
     
     call z, SHOW_SCORE
 
-;    ld  a,5             ; 2. Set color to RED (indicates processing start)
-;    out ($FE), A        ; Port $FE (254) controls the border
-    call ScanTheKeyBoard      ; 3. Run your main program logic here
+;    ld  a,5                ; Set color (indicates processing start)
+;    out ($FE), A           ; Port $FE (254) controls the border
+    call ScanTheKeyBoard    ; main program code
     
-;    ld a, 0             ; 4. Set color to BLACK (indicates processing end)
+;    ld a, 0                ; Set color to BLACK (indicates processing end)
 ;    out ($FE), A
-    ; Any remaining space in the border is "idle" time
+                            ; Any remaining space in the border is "idle" time
     jp MainLoop
 
 ScanTheKeyBoard:
@@ -231,7 +231,7 @@ MoveSpriteLeft:
     call DrawBlank24_24
     ld a, (SpriteXPos)
     dec a
-    cp 1
+    cp 0
     jp z, DrawSprite
     ld (SpriteXPos),a 
     jp DrawSprite
@@ -239,7 +239,7 @@ MoveSpriteRight:
     call DrawBlank24_24
     ld a, (SpriteXPos)
     inc a
-    cp 30
+    cp 29
     jp z, DrawSprite
     ld (SpriteXPos),a        
     jp DrawSprite
@@ -383,16 +383,7 @@ ActuallyDrawSprite:
     ld de, SpaceShip_2          ; load alternative space ship
 
 ReallyDrawSprite:
-;    ld hl, $5aa3 ; debug
-;    ld a, 16
-;    ld (hl), a
-   
-;    ld hl, $5aa5 ; debug
-;    ld a, 16
-;    ld (hl), a
-   
     call DrawSprite24x24   ; draw the players space ship
-
     call CheckAliensHit
 
     ld a, (moveAlienTimer)
@@ -406,15 +397,13 @@ DrawAliensTimerExpired:
     call UpdateAlienPositions
     call ChooseAliens
     call DrawAliensThisTime
+
     ld a, (AlienTimerInit)
     ld (moveAlienTimer),a
-
 
     ld a, (saucerEnabled)
     cp 1
     call z, DrawSaucerAndUpdate
-
-
 
     ld a, (saucerTimer)
     dec a
