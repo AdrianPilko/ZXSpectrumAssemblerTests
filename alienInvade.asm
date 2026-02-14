@@ -81,6 +81,16 @@ FirstTime:
     defb 0
 
 Main:
+    ;call CLS ; this crashes on restart of game, theory is that the ISR is causing this??!
+    ;; so clear screen manually
+    ld hl, $4000
+    ld (hl), 0
+    ld de, $4001
+    ld bc, 192*32 ; the size of the screen pixel memory
+    dec bc 
+    ldir 
+
+
     ; initialise all the variables apart from highScore
     ld a, 1
     ld (AlienDirection),a 
@@ -113,10 +123,6 @@ Main:
     ld (moveAlienTimer),a
     ld a, 60
     ld (saucerTimer), a
-    
-    ;call CLS. ; this rom routine for some reason was crashing after first restart??!
-
-
 ;once only debug stop
     ;ld a, (FirstTime)
     ;cp 1
@@ -791,6 +797,7 @@ GAME_OVER:
     call Delay
     call Delay
     jp Main ;; restart the game
+    
     ret         ; never gets here (oooo could same one byte) 
 MSG:    DEFB 22          ; AT control code
     DEFB 10          ; Line 10 (Vertical middle)
