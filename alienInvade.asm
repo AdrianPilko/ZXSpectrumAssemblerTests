@@ -12,7 +12,7 @@ LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
 ALIEN_MOVE_TIMER_INIT: equ 13
-ALIEN_MOVE_LIMIT: equ 13
+ALIEN_MOVE_LIMIT: equ 1
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
@@ -418,6 +418,12 @@ alienDirChange:
     inc a
     and %00000001    ; this will cause a to toggle
     ld (AlienDirection),a
+    ld a,(AlienMoveCounter)
+    inc a 
+    ld (AlienMoveCounter), a
+    ld a, (alienLeftRightCount)
+    inc a 
+    ld (alienLeftRightCount),a 
 
 noDirectionChange:
     ;; reset alien move timer. -the aliens move at lower rate than the space ship
@@ -825,10 +831,9 @@ AlienPosUpLoop_Cols:
     pop bc
     djnz AlienPosUpLoop_Rows
     ld a,(AlienMoveCounter)
-    inc a
+    ;; inc'd elsewhere when aliens change direction
     cp ALIEN_MOVE_LIMIT
     jp z, resetAlienRow
-    ld (AlienMoveCounter), a
     ret    
 
 AlienMoves_Left:
@@ -855,7 +860,7 @@ AlienPosUpLoop_Cols_L:
           
 
     ld a,(AlienMoveCounter)
-    inc a
+    ;inc a
     cp ALIEN_MOVE_LIMIT
     jp z, resetAlienRow
     ld (AlienMoveCounter), a
@@ -873,11 +878,10 @@ resetAlienRow:
     
     ;; only moveAliens down if they've been left right 4 times
     ld a, (alienLeftRightCount)
-    inc a 
-    ld (alienLeftRightCount),a 
     cp NUMBER_OF_LEFT_RIGHTS_ALIENS
     ret nz
 
+;; move them all down by one row
     xor a
     ld (alienLeftRightCount),a 
     ld iy, AlienLocation
