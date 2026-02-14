@@ -418,9 +418,6 @@ alienDirChange:
     inc a
     and %00000001    ; this will cause a to toggle
     ld (AlienDirection),a
-    ld a,(AlienMoveCounter)
-    inc a 
-    ld (AlienMoveCounter), a
     ld a, (alienLeftRightCount)
     inc a 
     ld (alienLeftRightCount),a 
@@ -830,10 +827,7 @@ AlienPosUpLoop_Cols:
         djnz AlienPosUpLoop_Cols
     pop bc
     djnz AlienPosUpLoop_Rows
-    ld a,(AlienMoveCounter)
-    ;; inc'd elsewhere when aliens change direction
-    cp ALIEN_MOVE_LIMIT
-    jp z, resetAlienRow
+    call resetAlienRow
     ret    
 
 AlienMoves_Left:
@@ -857,30 +851,11 @@ AlienPosUpLoop_Cols_L:
     ld a, 2
     ld de, GraphicTileBlank_8x8
     call DrawHorizontalBar
-          
 
-    ld a,(AlienMoveCounter)
-    ;inc a
-    cp ALIEN_MOVE_LIMIT
-    jp z, resetAlienRow
-    ld (AlienMoveCounter), a
-    ret   
 resetAlienRow:
-    xor a                   ;; a storing the number of times moved
-    ld (AlienMoveCounter), a
-    ; toggle the left right flag in  AlienDirection (when using bit 0, a to check)
-   ; ld a, (AlienDirection)
-   ; inc a 
-   ; ld (AlienDirection), a
-
-    ;; now move all the aliens down one
-    ;; but first have to blank the top row as this will no longer have aliens
-    
-    ;; only moveAliens down if they've been left right 4 times
     ld a, (alienLeftRightCount)
     cp NUMBER_OF_LEFT_RIGHTS_ALIENS
     ret nz
-
 ;; move them all down by one row
     xor a
     ld (alienLeftRightCount),a 
@@ -1754,9 +1729,6 @@ AlienValid: ; define 64 bytes set to 1, could save memeory with bit compression,
     defs 8*8, 1
 
 rowEvenOddToggle
-    defb 0
-
-AlienMoveCounter
     defb 0
 
 alienLeftRightCount
