@@ -260,9 +260,9 @@ setupRocket:
     ld a, 1
     ld (RocketFiring),a
 
-    ld hl, C_5
+    ld hl, 10
     ; DE = duration (frequency)
-    ld de, C_5_FQ
+    ld de, 20
     ; Jumps to beep
     call beep
     ;jp DrawSprite.  ; no need for this unless more code under here
@@ -395,6 +395,12 @@ ReallyDrawSprite:
     ret
 
 DrawAliensTimerExpired:
+
+    ld hl, C_5
+    ; DE = duration (frequency)
+    ld de, C_5_FQ
+    ; Jumps to beep
+    call beep
     call UpdateAlienPositions
     call ChooseAliens
     call DrawAliensThisTime
@@ -430,11 +436,6 @@ noDirectionChange:
     call z, DrawSaucerTimeExpired
     
     ret
-;    ld a, (alienFireToggle)  ; basically we want an alien shot in flight all the time
- ;   inc a
-  ;  bit 0, a
-   ; call z, isShotInFlight
-    ;ret 
 
 isShotInFlight:
     ld a, (alienShotInFlightFlag)
@@ -612,8 +613,14 @@ DrawSaucerTimeExpired
     ; also speed the aliens up by 1
     ld a, (AlienTimerInit)
     dec a 
+    cp 1        ;; limit alient timer to be at least 1,  otherwise underflows
+    ret z       ;; cp 0 set's the zero flag if it is zero
+    ld (AlienTimerInit),a
     dec a
+    ret z
+    ld (AlienTimerInit),a
     dec a
+    ret z
     ld (AlienTimerInit),a
 
     ret
@@ -748,8 +755,8 @@ drawShields:
 CheckIfAlienDirChangeRight
 ;; we check the first and last screen for any values
 ;; but only when that isn't the player or alien shot (which is %00011000)
-    ld b, 150  ; check this many lines
-    ld hl, $405e   ; start address of column rto check
+    ld b, 140  ; check this many lines
+    ld hl, $405d   ; start address of column rto check
 checkLeftColLoop_R:
     ld a, (hl)
     cp 0
@@ -770,8 +777,8 @@ nextLoopIfZeroOnRight:
 CheckIfAlienDirChangeLeft:
 ;; we check the first and last screen for any values
 ;; but only when that isn't the player or alien shot (which is %00011000)
-    ld b, 150  ; check this many lines
-    ld hl, $4021   ; start address of column rto check
+    ld b, 130  ; check this many lines
+    ld hl, $4041   ; start address of column rto check
 checkLeftColLoop_L:
     ld a, (hl)
     ;;ld (hl), %010101010
