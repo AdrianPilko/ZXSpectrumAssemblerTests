@@ -11,7 +11,7 @@ C_4_FQ: EQU $0105 / $10
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
-ALIEN_MOVE_TIMER_INIT: equ 13
+ALIEN_MOVE_TIMER_INIT: equ 30
 ALIEN_MOVE_LIMIT: equ 1
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
 SAUCER_TIMER_INIT: equ 128
@@ -20,7 +20,10 @@ TOTAL_NUM_ALIENS: equ 64
     org $8000
     defs $190
 
+
 Start:
+    call InitFont
+
     di                  ; Disable interrupts during setup
     
     ; 1. Create the Vector Table at $8000
@@ -41,7 +44,7 @@ Start:
 
     im 2                ; Enter Interrupt Mode 2
     ei                  ; re enable interrupts
-    jp Main
+    jp Main_FullReset
 
 MyISR:
     ex af, af'              ; save a and flags to alternate register set
@@ -77,11 +80,40 @@ WaitFrame_loop:
 
 FrameCount: 
     defw 0      ; Our 1-byte counter
-FirstTime:
-    defb 0
 
-Main:
-    ;call CLS ; this crashes on restart of game, theory is that the ISR is causing this??!
+Main_FullReset:
+    
+    ld a, ALIEN_MOVE_TIMER_INIT
+    ld (AlienTimerInit), a
+    ld a, 1
+    ld (level), a
+    xor a
+    ld (highScore3Bytes),a 
+    ld (highScore3Bytes+1),a 
+    ld (highScore3Bytes+2),a 
+
+Main_AfterGameOver:
+    ; just reset the level 
+    ld a, 1
+    ld (level), a
+    
+    xor a 
+    ld (score3Bytes), a 
+    ld (score3Bytes+1), a 
+    ld (score3Bytes+2), a 
+    
+Main_LevelUpReset:
+    ld a, (AlienTimerInit)
+    dec a 
+    cp 0
+    jp z, noUpdateSpeed
+    cp 1
+    jp z, noUpdateSpeed
+    cp 2
+    jp z, noUpdateSpeed
+    ld a,(AlienTimerInit)
+
+noUpdateSpeed:
     ;; so clear screen manually
     ld hl, $4000
     ld (hl), 0
@@ -89,8 +121,6 @@ Main:
     ld bc, 192*32 ; the size of the screen pixel memory
     dec bc 
     ldir 
-
-
     ; initialise all the variables apart from highScore
     ld a, 1
     ld (AlienDirection),a 
@@ -102,7 +132,7 @@ Main:
     ld (saucerFrameCount), a
     ld (saucerXPos), a
     ld (saucerEnabled), a
-    ld (AlienTimerInit), a
+    ;ld (AlienTimerInit), a
     ld (alienShotAddress+0), a
     ld (alienShotAddress+1), a
     ld (alienFireToggle), a
@@ -123,16 +153,6 @@ Main:
     ld (moveAlienTimer),a
     ld a, 60
     ld (saucerTimer), a
-;once only debug stop
-    ;ld a, (FirstTime)
-    ;cp 1
-    ;jp z, debugStop
-    ;jp skipDebugStop
-;debugStop:
-;    jp debugStop
-;skipDebugStop:
-;    ld a, 1 
-;    ld (FirstTime), a
 
     ;; setup the aliens after a restart
     ld de, AlienLocation
@@ -145,8 +165,6 @@ Main:
     ld bc, 63
     ldir 
 
-    ld a, ALIEN_MOVE_TIMER_INIT
-    ld (AlienTimerInit), a
     ld a, 15
     ld (SpriteXPos), a
     ld a, 160
@@ -186,6 +204,7 @@ Main:
     LD BC, 64       ; Fill the remaining 767 bytes
     LDIR             ; Rapid block copy
 
+;    call PrintLevel
     call drawPlayAreaBorder
 
     ld hl,highScore3Bytes
@@ -197,6 +216,7 @@ Main:
     call SHOW_SCORE
     
     call drawShields
+
     ;; read keys and make to allow what for with the sprite shall move    
 
 MainLoop:
@@ -677,17 +697,17 @@ DrawSaucerTimeExpired
     ld (saucerXPos), a
     ld (saucerEnabled), a
     ; also speed the aliens up by 1
-    ld a, (AlienTimerInit)
-    dec a 
-    cp 1        ;; limit alient timer to be at least 1,  otherwise underflows
-    ret z       ;; cp 0 set's the zero flag if it is zero
-    ld (AlienTimerInit),a
-    dec a
-    ret z
-    ld (AlienTimerInit),a
-    dec a
-    ret z
-    ld (AlienTimerInit),a
+    ;ld a, (AlienTimerInit)
+    ;dec a 
+    ;cp 1        ;; limit alient timer to be at least 1,  otherwise underflows
+    ;ret z       ;; cp 0 set's the zero flag if it is zero
+    ;ld (AlienTimerInit),a
+    ;dec a
+    ;ret z
+    ;ld (AlienTimerInit),a
+    ;dec a
+    ;ret z
+    ;ld (AlienTimerInit),a
 
     ret
 
@@ -796,7 +816,10 @@ GAME_OVER:
     call Delay
     call Delay
     call Delay
-    jp Main ;; restart the game
+    call Delay
+    call Delay
+    call Delay
+    jp Main_AfterGameOver ;; restart the game
     
     ret         ; never gets here (oooo could same one byte) 
 MSG:    DEFB 22          ; AT control code
@@ -873,6 +896,8 @@ checkLeftColLoop_R:
     cp 0
     jp z, nextLoopIfZeroOnRight
     cp %00011000  ; the shot sprite data
+    jp z, nextLoopIfZeroOnRight
+    cp %00100000
     jp z, nextLoopIfZeroOnRight
     ;; so now it wasn't a shot or anything else so must be an alien
     ;; we set the zero flag to tell caller we found something
@@ -1093,7 +1118,7 @@ RocketHIT:
     inc a
     ld (AlienHitCount),a
     cp TOTAL_NUM_ALIENS
-    call z, GAME_OVER_WON
+    jp z, GAME_OVER_WON
     
     ; increase the score
     call increaseScore
@@ -1108,21 +1133,27 @@ RocketHIT:
 endCheckAliens
     ret
 
-GAME_OVER_WON
+GAME_OVER_WON   ;; this is not really game over won, just increase level
+    pop af ; to keep stack consistency
     LD A, 2          ; Open Channel 2 (Upper Screen)
     CALL 5633
     LD DE, MSG_WON       ; Address of string
     LD BC, MSG_WON_END-MSG_WON ; Length of string
     CALL 8252        ; ROM routine to print
+
+    ld a, (level) 
+    inc a
+    ld (level), a   
     call Delay
-stopWonNow:
-    jp stopWonNow ; Todo -> make a proper game reset work - would need all alien start positions reseting
+    call Delay
+    call Delay
+    jp Main_LevelUpReset ;; restart the game
     ret 
 
 MSG_WON:    DEFB 22          ; AT control code
     DEFB 10          ; Line 10 (Vertical middle)
     DEFB 8           ; Column 8 (Horizontal start)
-    DEFB "**** YOU WON ****"
+    DEFB "**** LEVEL UP ****"
 MSG_WON_END: EQU $
 
 
@@ -1490,7 +1521,99 @@ DelayLoop:
 
     pop af
     pop bc
-ret
+    ret
+
+PrintLevel:
+    ld hl, $400C         ; Screen address (Row 0, Col 12)
+    ld de, LevelText     ; Point to "LEVEL " string
+    ld b, 6              ; 6 characters in "LEVEL "
+    
+.printString:
+    ld a, (de)
+    call DrawChar        ; Your routine to draw a character at (HL)
+    inc hl               ; Move to next character column
+    inc de
+    djnz .printString
+
+    ret
+    
+    ; Now print the 8-bit number (in register A)
+    ld a, (level) ; Load the 8-bit number
+    call PrintByteHL     ; Convert A to decimal and draw at HL
+    ret
+
+LevelText: 
+    defb  "LEVEL "
+
+; --- Helper: Print 8-bit Byte as Decimal at HL ---
+PrintByteHL:
+    ; Very simple 2-digit version (00-99)
+    ; For 3 digits (0-255), you need a slightly longer division loop
+    ld c, 0              ; Counter for tens
+.tensLoop:
+    cp 10
+    jr c, .doneTens      ; If A < 10, we are done with tens
+    sub 10
+    inc c
+    jr .tensLoop
+.doneTens:
+    ld b, a              ; Store remainder (units) in B
+    
+    ld a, c              ; Get tens count
+    add a, 48            ; Convert to ASCII ('0' = 48)
+    call DrawChar
+    
+    inc hl               ; Move to next screen column
+    
+    ld a, b              ; Get units
+    add a, 48            ; Convert to ASCII
+    call DrawChar
+    ret
+
+DrawChar:
+    push hl
+    ld de, MyFontRAM
+    ld b, 8
+.loop:
+    ld a, (de)
+    ld (hl), a
+    inc de
+    
+    ; Move HL down one scanline safely
+    inc h                ; Move to next scanline
+    ld a, h
+    and 7                ; Check if we crossed a character boundary
+    jr nz, .next
+    ld a, l
+    add a, 32            ; Move to next character row
+    ld l, a
+    jr c, .next
+    ld a, h
+    sub 8                ; Correct H for the block jump
+    ld h, a
+.next:
+    djnz .loop
+    pop hl
+    ret
+
+.drawLoop:
+    ld a, (de)           ; Get byte from font
+    ld (hl), a           ; Write to screen
+    
+    inc de               ; Next byte of font data
+    inc h                ; Move HL down 1 scanline ($0100 bytes)
+    
+    djnz .drawLoop       ; Repeat for all 8 lines
+    
+    pop hl               ; Restore HL to the top-left of the character
+    ret
+
+InitFont:
+    ld hl, $3D00         ; ROM font address
+    ld de, MyFontRAM     ; A safe place in your RAM (e.g., $F000)
+    ld bc, 768           ; 96 characters * 8 bytes
+    ldir
+    ret
 
 
 
@@ -1949,8 +2072,11 @@ defb %00000000,%11111111,%11111111,%00011100,%00011100,%11111111,%11111111,%0000
 defb %00000000,%10000000,%11111000,%01111110,%01111110,%11111000,%10000000,%00000000
 
 
-
+level:
+    defb 0
 score3Bytes: defb 0,0,0      ; Stored as: [100k/10k], [1k/100s], [10s/1s]
 highScore3Bytes: defb 0,0,0
+MyFontRAM:
+    defb 768
 
 end $8000
