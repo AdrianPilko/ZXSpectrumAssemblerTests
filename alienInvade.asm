@@ -77,13 +77,56 @@ WaitFrame_loop:
 
 FrameCount: 
     defw 0      ; Our 1-byte counter
-debugColour1:
-    defb 2
-debugColour2:
-    defb 3
+FirstTime:
+    defb 0
 
 Main:
+    ; initialise all the variables apart from highScore
+    ld a, 1
+    ld (AlienDirection),a 
+    xor a
+    ld (rowEvenOddToggle),a    
+    ld (alienLeftRightCount),a
+    ld (currentAlienValidAddress+0),a
+    ld (currentAlienValidAddress+1),a
+    ld (saucerFrameCount), a
+    ld (saucerXPos), a
+    ld (saucerEnabled), a
+    ld (AlienTimerInit), a
+    ld (alienShotAddress+0), a
+    ld (alienShotAddress+1), a
+    ld (alienFireToggle), a
+    ld (alienShotInFlightFlag), a
+    ld (AlienFrameCounter), a
+    ld (RocketXPos), a
+    ld (RocketYPos), a
+    ld (RocketFiring), a
+    ld (SpriteMoveX), a
+    ld (SpriteMoveY), a
+    ld (SpriteFrameCounter), a
+    ld (movedRightFlag), a
+    ld (movedLeftFlag), a
+    ld (alienCheckCount), a
+    ld (ScoreChanged), a
+    ld (AlienHitCount), a
+    ld a, 20
+    ld (moveAlienTimer),a
+    ld a, 60
+    ld (saucerTimer), a
+    
+    ;call CLS. ; this rom routine for some reason was crashing after first restart??!
 
+
+;once only debug stop
+    ;ld a, (FirstTime)
+    ;cp 1
+    ;jp z, debugStop
+    ;jp skipDebugStop
+;debugStop:
+;    jp debugStop
+;skipDebugStop:
+;    ld a, 1 
+;    ld (FirstTime), a
 
     ;; setup the aliens after a restart
     ld de, AlienLocation
@@ -93,7 +136,7 @@ Main:
     ld hl, AlienValid           ; use the z80 memory overlap trick to initialise all the AlienValid to 1
     ld (hl), 1
     ld de, AlienValid+1 
-    ld bc, 64
+    ld bc, 63
     ldir 
 
     ld a, ALIEN_MOVE_TIMER_INIT
@@ -102,7 +145,6 @@ Main:
     ld (SpriteXPos), a
     ld a, 160
     ld (SpriteYPos), a
-    call CLS
 
     LD HL, 22528     ; Start of Attribute Memory
     LD (HL), 6      
@@ -139,8 +181,16 @@ Main:
     LDIR             ; Rapid block copy
 
     call drawPlayAreaBorder
-    call drawShields
+
+    ld hl,highScore3Bytes
+    ld de, $4019
+    call SHOW_SCORE
+
+    ld hl,score3Bytes
+    ld de, $4000
+    call SHOW_SCORE
     
+    call drawShields
     ;; read keys and make to allow what for with the sprite shall move    
 
 MainLoop:
@@ -150,6 +200,8 @@ MainLoop:
   
     call WaitFrame
     
+    ld hl, score3Bytes
+    ld de, $4000
     call z, SHOW_SCORE
 
 ;    ld  a,5                ; Set color (indicates processing start)
@@ -683,7 +735,7 @@ AlienDrawLoop_Cols:
                 pop de 
                 pop bc 
                 pop bc
-                call GAME_OVER
+                jp GAME_OVER
 notAtBottom:
                 push hl
                     ld a, 1
@@ -724,20 +776,64 @@ nextLoopDrawAlienRow:
     ret
 
 GAME_OVER:
-    LD A, 2          ; Open Channel 2 (Upper Screen)
-    CALL 5633
-    LD DE, MSG       ; Address of string
-    LD BC, MSG_END-MSG ; Length of string
-    CALL 8252        ; ROM routine to print
-    call Delay
-    jp GAME_OVER ; Todo -> make a proper game reset work - would need all alien start positions reseting
-    ret 
+    pop af ;; do this because we have jp'd from a call'd routine and need to get stack consistent
+    ld A, 2          ; Open Channel 2 (Upper Screen)
+    call 5633
+    ld DE, MSG       ; Address of string
+    ld BC, MSG_END-MSG ; Length of string
+    call 8252        ; ROM routine to print
 
+    ; copy the current score into the high score (if higher)
+    call CheckNewHighScore
+    ; compare it with high score, if its bigger then it is a new high score
+    
+    call Delay
+    call Delay
+    call Delay
+    jp Main ;; restart the game
+    ret         ; never gets here (oooo could same one byte) 
 MSG:    DEFB 22          ; AT control code
     DEFB 10          ; Line 10 (Vertical middle)
     DEFB 8           ; Column 8 (Horizontal start)
     DEFB "*** GAME OVER ***"
 MSG_END: EQU $
+
+
+CheckNewHighScore:
+    ld hl, score3Bytes          ; Point to current score (High byte)
+    ld de, highScore3Bytes      ; Point to high score (High byte)
+    ld b, 3               ; We have 3 bytes to check
+
+compareHSLoop:
+    ld a, (de)            ; Load HighScore byte into A
+    ld c, a               ; Store it in C
+    ld a, (hl)            ; Load Current Score byte into A
+    
+    cp c                  ; Compare Score (A) with HighScore (C)
+    jr nz, HSdecided       ; If not equal, we know which is higher!
+    
+    inc hl                ; They were equal, move to middle byte
+    inc de
+    djnz compareHSLoop     ; Repeat for next byte
+    
+    ; If we get here, the scores are exactly equal
+    jr HSnotHigher
+
+HSdecided:
+    jr c, HSnotHigher      ; If Carry is set, Score < HighScore
+    
+    ; --- NEW HIGH SCORE FOUND ---
+    ; (Score was > HighScore)
+    ld hl, score3Bytes          ; Point to current score (High byte)
+    ld de, highScore3Bytes      ; Point to high score (High byte)
+    ld b, 3               ; We have 3 bytes to check
+    ldir ; bit overkill herre only 3 in loop!!
+    ret
+
+HSnotHigher:
+    ; --- NOT A HIGH SCORE ---
+    ret
+
 
 
 
@@ -990,7 +1086,7 @@ RocketHIT:
     inc a
     ld (AlienHitCount),a
     cp TOTAL_NUM_ALIENS
-    jp z, GAME_OVER_WON
+    call z, GAME_OVER_WON
     
     ; increase the score
     call increaseScore
@@ -1051,8 +1147,8 @@ increaseScore:
 ; --- MAIN PRINT ROUTINE ---
 
 SHOW_SCORE
-    ld hl, score3Bytes    ; Point to your score
-    ld de, $4000        ; Top-left pixel address
+    ;ld hl, score3Bytes    ; Point to your score
+    ;ld de, $4000        ; Top-left pixel address
     ld b, 3             ; Loop for 3 bytes (6 digits)
 
 .byteLoop:
@@ -1546,7 +1642,6 @@ ret
 
 
 AlienDirection:
-
     defb 1
 
 ;; due to attribute drawing these can appear in reverse of what they look like here with 1 or zeros opposite
@@ -1657,7 +1752,8 @@ AlienHitCount:
 AlienLocation:  ; we use the iy register to index through the possible aliens locaitons form here 
 ;;; these are initialised from AlienLocationInits on game restart.
 ;; there's 128 because 64 aliens but 2 bytes per location which is a screen memory address
-    defs 128, 0
+    defs 256, 0
+
 AlienValid: ; define 64 bytes set to 1, could save memeory with bit compression, but we have a massive 48K!!!
     defs 8*8, 1
 
@@ -1738,18 +1834,12 @@ AlienLocationInits:  ; we use the iy register to index through the possible alie
     defW $482e
     defW $4830
 
-
-
-
 rowEvenOddToggle
     defb 0
-
 alienLeftRightCount
     defb 0
-
 currentAlienValidAddress
-    defw 0
-
+    defw 0,0
 saucerFrameCount:
     defb 0
 saucerTimer:
@@ -1760,7 +1850,6 @@ saucerEnabled:
     defb 0
 AlienTimerInit:
     defb 0
-
 alienShotAddress:
     defw 0
 alienFireToggle:
@@ -1794,8 +1883,6 @@ scr_addr_table:
 	dw &50A0,&51A0,&52A0,&53A0,&54A0,&55A0,&56A0,&57A0
 	dw &50C0,&51C0,&52C0,&53C0,&54C0,&55C0,&56C0,&57C0
 	dw &50E0,&51E0,&52E0,&53E0,&54E0,&55E0,&56E0,&57E0
-
-score3Bytes: defb 0,0,0      ; Stored as: [100k/10k], [1k/100s], [10s/1s]
 
 SpriteBlank_24x24:
     defs 8*9, 0
@@ -1853,5 +1940,10 @@ defb %00000000,%10000000,%11111000,%11101110,%11101110,%11111000,%10000000,%0000
 defb %00000000,%00000001,%00011111,%01110111,%01110111,%00011111,%00000001,%00000000
 defb %00000000,%11111111,%11111111,%00011100,%00011100,%11111111,%11111111,%00000000
 defb %00000000,%10000000,%11111000,%01111110,%01111110,%11111000,%10000000,%00000000
+
+
+
+score3Bytes: defb 0,0,0      ; Stored as: [100k/10k], [1k/100s], [10s/1s]
+highScore3Bytes: defb 0,0,0
 
 end $8000
