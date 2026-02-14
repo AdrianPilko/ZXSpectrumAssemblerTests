@@ -479,11 +479,13 @@ ReallyDrawSprite:
 
 DrawAliensTimerExpired:
 
+
     ld hl, C_5
     ; DE = duration (frequency)
     ld de, C_5_FQ
     ; Jumps to beep
     call beep
+    call DrawAliensThisTimeBLANK
     call UpdateAlienPositions
     call ChooseAliens
     call DrawAliensThisTime
@@ -724,6 +726,78 @@ Alien_1:
     ld de, AlienGraphic_8x8_1
     ret
 
+
+
+
+DrawAliensThisTimeBLANK:
+    ld iy,AlienLocation
+    ld hl, AlienValid           ; store first alien valid address used in loop to work out where is hit
+    ld (currentAlienValidAddress), hl
+ 
+    ld b, NUMBER_ALIEN_ROWS
+    
+AlienDrawLoop_RowsBL:
+    push bc
+        ld b, NUMBER_ALIEN_IN_ROW
+AlienDrawLoop_ColsBL:
+        push bc
+            ld l, (iy+0)
+            ld h, (iy+1)
+            inc iy
+            inc iy
+            ld a, 1
+            ;; de already be loaded but save to stack 
+            push de
+                ; do we need to draw this one?
+                push hl  
+                    ld a, (currentAlienValidAddress+0)
+                    ld l, a
+                    ld a, (currentAlienValidAddress+1)
+                    ld h, a             
+                    ld a, (hl)
+                    cp 1
+                pop hl
+                jp nz, skipDrawThisAlienBL
+
+                ld de, GraphicTileBlank_8x8
+                ld a, 1
+                call DrawHorizontalBar
+skipDrawThisAlienBL:
+                ld hl, (currentAlienValidAddress)  
+                inc hl 
+                ld (currentAlienValidAddress),hl   
+            pop de
+        pop bc
+        djnz AlienDrawLoop_ColsBL   
+
+        ; draw alternating rows with different alien sprite
+        ld a, (rowEvenOddToggle)
+        inc a 
+        ld (rowEvenOddToggle),a
+        bit 0, a 
+        jp nz, subtractAlienSpriteDEBL 
+        ld hl, -16
+        add hl, de
+        push hl 
+        pop de
+        jp nextLoopDrawAlienRowBL
+subtractAlienSpriteDEBL:
+        ld hl, 16
+        add hl, de      
+        push hl 
+        pop de
+nextLoopDrawAlienRowBL:
+    pop bc
+    djnz AlienDrawLoop_RowsBL
+    ret
+
+
+
+
+
+
+
+
 DrawAliensThisTime:
     ld iy,AlienLocation
     ld hl, AlienValid           ; store first alien valid address used in loop to work out where is hit
@@ -768,11 +842,6 @@ notAtBottom:
                     call DrawHorizontalBar
                 pop hl
 skipDrawThisAlien:
-                inc l
-                ld de, GraphicTileBlank_8x8
-                ld a, 1
-                call DrawHorizontalBar
-
                 ld hl, (currentAlienValidAddress)  
                 inc hl 
                 ld (currentAlienValidAddress),hl   
@@ -1099,13 +1168,28 @@ EndCheckAliensHit
 RocketHIT:  
     pop bc ; have todo this because jumps out of loop early
 
-
     call beep
     ld a, 0 
     ld (RocketFiring), a
 
     ld a, 1
     ld (ScoreChanged), a
+
+    ;; right lets print an explosion then blank it
+    push hl
+        ld de, Explosion
+        ld  a,1
+        call DrawHorizontalBar
+    
+    call Delay
+
+    pop hl    
+    ld de, GraphicTileBlank_8x8
+    ld  a,1
+    call DrawHorizontalBar
+    
+    ; now blank it (probably won't see the exlposion though TODO FIX!)
+
 
     ld a, (currentAlienValidAddress+0)
     ld l, a
@@ -1848,6 +1932,17 @@ GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
     defb %00000000
     defb %00000000
+
+Explosion:
+    defb %00100100
+    defb %01000010
+    defb %10100101
+    defb %00000000
+    defb %00000000
+    defb %10100101
+    defb %01000010
+    defb %00100100 
+
 
 AlienFrameCounter:
     defb 0
