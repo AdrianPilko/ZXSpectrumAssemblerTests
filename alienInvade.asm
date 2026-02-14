@@ -399,6 +399,20 @@ DrawAliensTimerExpired:
     call ChooseAliens
     call DrawAliensThisTime
 
+;stopNow  
+;    jp stopNow
+    call CheckIfAlienDirChangeLeft
+    jp nz, alienDirChange
+    call CheckIfAlienDirChangeRight
+    jp nz, alienDirChange
+    ;; otherwise just keep going
+alienDirChange:
+    ld a, (AlienDirection)
+    inc a
+    and %00000001    ; this will cause a to toggle
+    ld (AlienDirection),a
+
+noDirectionChange:
     ;; reset alien move timer. -the aliens move at lower rate than the space ship
     ld a, (AlienTimerInit)
     ld (moveAlienTimer),a
@@ -730,7 +744,49 @@ drawShields:
     call DrawSprite24x24
 
     ret 
+CheckIfAlienDirChangeRight
+;; we check the first and last screen for any values
+;; but only when that isn't the player or alien shot (which is %00011000)
+    ld b, 150  ; check this many lines
+    ld hl, $405e   ; start address of column rto check
+checkLeftColLoop_R:
+    ld a, (hl)
+    cp 0
+    jp z, nextLoopIfZeroOnRight
+    cp %00011000  ; the shot sprite data
+    jp z, nextLoopIfZeroOnRight
+    ;; so now it wasn't a shot or anything else so must be an alien
+    ;; we set the zero flag to tell caller we found something
+    or %00000001
+    ret                   ; we found an alien
+nextLoopIfZeroOnRight:
+    call NextScan
+    djnz checkLeftColLoop_R
+    xor a
+    ret                    ; we didn't find anything
 
+
+CheckIfAlienDirChangeLeft:
+;; we check the first and last screen for any values
+;; but only when that isn't the player or alien shot (which is %00011000)
+    ld b, 150  ; check this many lines
+    ld hl, $4021   ; start address of column rto check
+checkLeftColLoop_L:
+    ld a, (hl)
+    ;;ld (hl), %010101010
+    cp 0
+    jp z, nextLoopIfZeroOnLeft
+    cp %00011000  ; the shot sprite data
+    jp z, nextLoopIfZeroOnLeft
+    ;; so now it wasn't a shot or anything else so must be an alien
+    ;; we set the zero flag to tell caller we found something
+    or %00000001
+    ret                   ; we found an alien
+nextLoopIfZeroOnLeft:
+    call NextScan
+    djnz checkLeftColLoop_L
+    xor a
+    ret                   ; we didn't find anything
 
 UpdateAlienPositions:
     ;; determine direction aliens are currently moving
@@ -767,7 +823,6 @@ AlienPosUpLoop_Cols:
     ld (AlienMoveCounter), a
     ret    
 
-
 AlienMoves_Left:
 
     ld iy,AlienLocation
@@ -798,12 +853,12 @@ AlienPosUpLoop_Cols_L:
     ld (AlienMoveCounter), a
     ret   
 resetAlienRow:
-    xor a                   ;; a storing the numbner of times moved
+    xor a                   ;; a storing the number of times moved
     ld (AlienMoveCounter), a
     ; toggle the left right flag in  AlienDirection (when using bit 0, a to check)
-    ld a, (AlienDirection)
-    inc a 
-    ld (AlienDirection), a
+   ; ld a, (AlienDirection)
+   ; inc a 
+   ; ld (AlienDirection), a
 
     ;; now move all the aliens down one
     ;; but first have to blank the top row as this will no longer have aliens
