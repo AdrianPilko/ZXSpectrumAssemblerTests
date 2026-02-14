@@ -406,6 +406,7 @@ DrawAliensTimerExpired:
     call CheckIfAlienDirChangeRight
     jp nz, alienDirChange
     ;; otherwise just keep going
+    jp noDirectionChange
 alienDirChange:
     ld a, (AlienDirection)
     inc a
