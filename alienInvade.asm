@@ -68,13 +68,6 @@ WaitFrame:
     ld b, a
 WaitFrame_loop:
     halt                ; Wait for the next interrupt
-    ;push af
-    ;    ld hl, START_OF_ATTRIBUTE_SCREEN_MEM+1 ; debug
-    ;    ld a,(debugColour2)
-    ;    inc a
-    ;    ld (debugColour2),a
-    ;    ld (hl), a
-    ;pop af
 
     ld a, (FrameCount)
     cp b                ; Compare current to target
@@ -90,6 +83,18 @@ debugColour2:
     defb 3
 
 Main:
+
+
+    ;; setup the aliens after a restart
+    ld de, AlienLocation
+    ld hl, AlienLocationInits
+    ld bc, 128
+    ldir 
+    ld hl, AlienValid           ; use the z80 memory overlap trick to initialise all the AlienValid to 1
+    ld (hl), 1
+    ld de, AlienValid+1 
+    ld bc, 64
+    ldir 
 
     ld a, ALIEN_MOVE_TIMER_INIT
     ld (AlienTimerInit), a
@@ -1650,6 +1655,14 @@ ScoreChanged
 AlienHitCount:
     defb 0
 AlienLocation:  ; we use the iy register to index through the possible aliens locaitons form here 
+;;; these are initialised from AlienLocationInits on game restart.
+;; there's 128 because 64 aliens but 2 bytes per location which is a screen memory address
+    defs 128, 0
+AlienValid: ; define 64 bytes set to 1, could save memeory with bit compression, but we have a massive 48K!!!
+    defs 8*8, 1
+
+;;; we need a copy of the alien locations which is to allow for game restarts
+AlienLocationInits:  ; we use the iy register to index through the possible aliens locaitons form here 
     ; row 1
     defW $4042
     defW $4044
@@ -1725,8 +1738,8 @@ AlienLocation:  ; we use the iy register to index through the possible aliens lo
     defW $482e
     defW $4830
 
-AlienValid: ; define 64 bytes set to 1, could save memeory with bit compression, but we have a massive 48K!!!
-    defs 8*8, 1
+
+
 
 rowEvenOddToggle
     defb 0
