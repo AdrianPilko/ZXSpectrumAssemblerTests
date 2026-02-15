@@ -1,6 +1,22 @@
 
 ;; some helpful equ's
 CLS equ $0d6b
+ROM_OPEN_CHANNEL equ $1601
+ROM_PRINT_STRING equ $203c
+;
+; PRINT control codes - work with ROM_PRINT_STRING and RST 0x10
+;
+INK     equ $10
+PAPER   equ $11
+FLASH   equ $12
+BRIGHT  equ $13
+INVERSE equ $14
+OVER    equ $15
+AT      equ $16
+TAB     equ $17
+CR      equ $0c
+
+
 START_OF_ATTRIBUTE_SCREEN_MEM equ $5800
 ;sounds
 C_5: EQU $0326
@@ -9,77 +25,81 @@ C_4: EQU $066E
 C_4_FQ: EQU $0105 / $10
 
 LOCATE: equ $0dd9
-NUMBER_ALIEN_IN_ROW: equ 8
-NUMBER_ALIEN_ROWS: equ 8
+;NUMBER_ALIEN_IN_ROW: equ 8
+;NUMBER_ALIEN_ROWS: equ 8
+NUMBER_ALIEN_IN_ROW: equ 2
+NUMBER_ALIEN_ROWS: equ 1
+
 ALIEN_MOVE_TIMER_INIT: equ 30
 ALIEN_MOVE_LIMIT: equ 1
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
 TOTAL_NUM_ALIENS: equ 64
+TOTAL_NUM_ALIENS: equ 2
     org $8000
     defs $190
 
 
-Start:
-    call InitFont
+;Start:
+;    call InitFont
+;
+;    di                  ; Disable interrupts during setup
+;    
+;    ; 1. Create the Vector Table at $8000
+;    ld HL, $8000        ; Table starts at $8000
+;    ld a, $81        ; Fill with $81
+;    ld de, $8001
+;    ld (hl), a
+;    ld bc, $0101-1         
+;    ldir                ; fill
 
-    di                  ; Disable interrupts during setup
-    
-    ; 1. Create the Vector Table at $8000
-    ld HL, $8000        ; Table starts at $8000
-    ld a, $81        ; Fill with $81
-    ld de, $8001
-    ld (hl), a
-    ld bc, $0101-1         
-    ldir                ; fill
+;   dec a
+;    ld i, a
+;    ; 2. Place the Interrupt Service Routine (ISR) at $8181
+;    ld a, $C3           ; Opcode for 'JP'
+;    ld ($8181), a
+;    ld hl, MyISR        ; Address of our counter routine
+;    ld ($8182), hl
 
-    dec a
-    ld i, a
-    ; 2. Place the Interrupt Service Routine (ISR) at $8181
-    ld a, $C3           ; Opcode for 'JP'
-    ld ($8181), a
-    ld hl, MyISR        ; Address of our counter routine
-    ld ($8182), hl
+;    im 2                ; Enter Interrupt Mode 2
+;    ei                  ; re enable interrupts
+;    jp Main_FullReset
 
-    im 2                ; Enter Interrupt Mode 2
-    ei                  ; re enable interrupts
-    jp Main_FullReset
+;MyISR:
+;    ex af, af'              ; save a and flags to alternate register set
+;        push bc             ; Always save registers as this can and will be asynchronous to the other code
+;        push de
+;        push hl
+;        push ix
+;        push iy
+;            ld hl, FrameCount
+;            inc (hl)
+;        pop iy
+;        pop ix
+;        pop hl
+;        pop de
+;        pop bc
+;    ex af,af'
+;    ei                  ; Re-enable interrupts
+;    reti                ; Return from Interrupt
+;
 
-MyISR:
-    ex af, af'              ; save a and flags to alternate register set
-        push bc             ; Always save registers as this can and will be asynchronous to the other code
-        push de
-        push hl
-        push ix
-        push iy
-            ld hl, FrameCount
-            inc (hl)
-        pop iy
-        pop ix
-        pop hl
-        pop de
-        pop bc
-    ex af,af'
-    ei                  ; Re-enable interrupts
-    reti                ; Return from Interrupt
-
-
-WaitFrame:
-    ld a, (FrameCount)
-    inc a            ; Target frame, just 1
-    ld b, a
-WaitFrame_loop:
-    halt                ; Wait for the next interrupt
-
-    ld a, (FrameCount)
-    cp b                ; Compare current to target
-    jr c, WaitFrame_loop
-    ret
+;WaitFrame:
+;    ld a, (FrameCount)
+;    inc a            ; Target frame, just 1
+;    ld b, a
+;WaitFrame_loop:
+;    halt                ; Wait for the next interrupt
+;
+;    ld a, (FrameCount)
+;    cp b                ; Compare current to target
+;    jr c, WaitFrame_loop
+;    ret
 
 
-FrameCount: 
-    defw 0      ; Our 1-byte counter
+;FrameCount: 
+;    defw 0      ; Our 1-byte counter
 
 Main_FullReset:
     
@@ -114,13 +134,12 @@ Main_LevelUpReset:
     ld a,(AlienTimerInit)
 
 noUpdateSpeed:
-    ;; so clear screen manually
     ld hl, $4000
     ld (hl), 0
     ld de, $4001
-    ld bc, 192*32 ; the size of the screen pixel memory
-    dec bc 
-    ldir 
+    ld bc, $1800; the size of the screen pixel memory
+    ldir
+
     ; initialise all the variables apart from highScore
     ld a, 1
     ld (AlienDirection),a 
@@ -132,7 +151,6 @@ noUpdateSpeed:
     ld (saucerFrameCount), a
     ld (saucerXPos), a
     ld (saucerEnabled), a
-    ;ld (AlienTimerInit), a
     ld (alienShotAddress+0), a
     ld (alienShotAddress+1), a
     ld (alienFireToggle), a
@@ -204,8 +222,10 @@ noUpdateSpeed:
     LD BC, 64       ; Fill the remaining 767 bytes
     LDIR             ; Rapid block copy
 
-;    call PrintLevel
+
+
     call drawPlayAreaBorder
+    call PrintLevel
 
     ld hl,highScore3Bytes
     ld de, $4019
@@ -213,18 +233,18 @@ noUpdateSpeed:
 
     ld hl,score3Bytes
     ld de, $4000
-    call SHOW_SCORE
-    
+    call SHOW_SCORE    
     call drawShields
 
-    ;; read keys and make to allow what for with the sprite shall move    
-
-MainLoop:
+MainGAME_loop:
     ; the ld a,5 ; out ($fe) ,  here are debug to give an indication
     ; of the cpu cycles being used, when the colour boarder fills the
     ; whole screen means run out of time before next tv frame is being drawn
   
-    call WaitFrame
+ ;   call WaitFrame im2 was causing problems with rom routines, don't need it anyway
+ ; since we only need to sync to screen which halt does
+    halt
+
     
     ld hl, score3Bytes
     ld de, $4000
@@ -237,7 +257,7 @@ MainLoop:
 ;    ld a, 0                ; Set color to BLACK (indicates processing end)
 ;    out ($FE), A
                             ; Any remaining space in the border is "idle" time
-    jp MainLoop
+    jp MainGAME_loop
 
 ScanTheKeyBoard:
 ScanKey_A:
@@ -1061,19 +1081,6 @@ resetAlienRow:
 ;; move them all down by one row
     xor a
     ld (alienLeftRightCount),a 
-    ld iy, AlienLocation
-    ld b, NUMBER_ALIEN_IN_ROW
-AlienBlankTopRowLoop_Cols:
-    push bc
-        ld l, (iy+0)
-        ld h, (iy+1)
-        ld a, 2
-        ld de, GraphicTileBlank_8x8
-        call DrawHorizontalBar
-        inc iy              ; Move IY to the next alien in the table
-        inc iy  
-    pop bc      
-    djnz AlienBlankTopRowLoop_Cols
 
     ld iy, AlienLocation
     ld b, NUMBER_ALIEN_ROWS  
@@ -1201,29 +1208,20 @@ RocketHIT:
     ld a, (AlienHitCount)
     inc a
     ld (AlienHitCount),a
-    cp TOTAL_NUM_ALIENS
-    jp z, GAME_OVER_WON
-    
+
     ; increase the score
     call increaseScore
-    jr endCheckAliens          ; If no carry, we're finished
-
-    dec hl                ; Carry to the hundreds/thousands byte
-    ld a, (hl)
-    adc a, 0              ; Add the carry
-    daa
-    ld (hl), a
-    ; (Repeat for the third byte if needed for millions)
-endCheckAliens
-    ret
-
-GAME_OVER_WON   ;; this is not really game over won, just increase level
-    pop af ; to keep stack consistency
-    LD A, 2          ; Open Channel 2 (Upper Screen)
-    CALL 5633
-    LD DE, MSG_WON       ; Address of string
-    LD BC, MSG_WON_END-MSG_WON ; Length of string
-    CALL 8252        ; ROM routine to print
+    
+    ld a, (AlienHitCount)
+    cp TOTAL_NUM_ALIENS
+    jp z, AllAliensDeadLevelUp
+    jp NoLevelUp
+AllAliensDeadLevelUp:    
+    ld a, 2          ; Open Channel 2 (Upper Screen)
+    call ROM_OPEN_CHANNEL
+    ld de, MSG_LEVEL_UP       ; Address of string
+    ld bc, MSG_LEVEL_UP_END - MSG_LEVEL_UP ; Length of string    
+    call ROM_PRINT_STRING        ; ROM routine to print    
 
     ld a, (level) 
     inc a
@@ -1231,14 +1229,23 @@ GAME_OVER_WON   ;; this is not really game over won, just increase level
     call Delay
     call Delay
     call Delay
-    jp Main_LevelUpReset ;; restart the game
-    ret 
 
-MSG_WON:    DEFB 22          ; AT control code
-    DEFB 10          ; Line 10 (Vertical middle)
-    DEFB 8           ; Column 8 (Horizontal start)
-    DEFB "**** LEVEL UP ****"
-MSG_WON_END: EQU $
+debugStop:  
+    jp debugStop
+
+    jp Main_LevelUpReset ;; restart the game
+    
+NoLevelUp:
+    ;; this was jumped to not called
+    jp EndCheckAliensHit
+    ; never gets here
+
+MSG_LEVEL_UP:
+   defb  AT    ; control code
+   defb  10     ; Line 10 (Vertical middle)
+   defb  8      ; Column 8 (Horizontal start)
+   defb  "**** LEVEL UP ****"
+MSG_LEVEL_UP_END: EQU $
 
 
 
@@ -1608,26 +1615,39 @@ DelayLoop:
     ret
 
 PrintLevel:
-    ld hl, $400C         ; Screen address (Row 0, Col 12)
-    ld de, LevelText     ; Point to "LEVEL " string
-    ld b, 6              ; 6 characters in "LEVEL "
-    
-.printString:
-    ld a, (de)
-    call DrawChar        ; Your routine to draw a character at (HL)
-    inc hl               ; Move to next character column
-    inc de
-    djnz .printString
-
-    ret
-    
+;    ld hl, $400C         ; Screen address (Row 0, Col 12)
+;    ld de, LevelText     ; Point to "LEVEL " string
+;    ld b, 6              ; 6 characters in "LEVEL "
+;    
+;.printString:
+;    ld a, (de)
+;    call DrawChar        ; Your routine to draw a character at (HL)
+;    inc hl               ; Move to next character column
+;    inc de
+;    djnz .printString
+;
+;    ret
+;    
     ; Now print the 8-bit number (in register A)
-    ld a, (level) ; Load the 8-bit number
-    call PrintByteHL     ; Convert A to decimal and draw at HL
-    ret
+;    ld a, (level) ; Load the 8-bit number
+;    call PrintByteHL     ; Convert A to decimal and draw at HL
+;    ret
 
-LevelText: 
-    defb  "LEVEL "
+    LD A, 2          ; Open Channel 2 (Upper Screen)
+    CALL 5633
+    LD DE, MSG_LEVEL       ; Address of string
+    LD BC, MSG_LEVEL_END - MSG_LEVEL ; Length of string
+    CALL 8252        ; ROM routine to print
+    ;ld a, (level) 
+    
+    ret 
+
+MSG_LEVEL:    DEFB 22          ; AT control code
+    DEFB 0          ; Line 0
+    DEFB 9           ; Column 8
+    DEFB "LEVEL "
+MSG_LEVEL_END: EQU $
+
 
 ; --- Helper: Print 8-bit Byte as Decimal at HL ---
 PrintByteHL:
