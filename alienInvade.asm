@@ -1725,6 +1725,13 @@ PrintFirstScreen
     ld bc, $300
     ldir
 
+
+    ld hl, $5800+$20
+    ld (hl),6
+    ld de, $5801+$20
+    ld bc, 95
+    ldir
+
     ld a, 2          ; Open Channel 2
     call 5633
     ld de, SCREEN_TEXT_1       ; Address of string
@@ -1752,12 +1759,31 @@ PrintFirstScreen
 
 ScanToStartLoop:
     ld b, 15
-    ld c, 15
+    ld c, 17
     call GetScreenPos
     ld de, AlienGraphic_8x8_1
     ld a, 1
     call DrawHorizontalBar
-
+    call Delay
+    call Delay
+    call Delay
+    call Delay
+    ld b, 15
+    ld c, 17
+    call GetScreenPos
+    ld de, SpriteBlank_24x24
+    ld a, 1
+    call DrawHorizontalBar
+    call Delay
+    call Delay
+    call Delay
+    ld b, 15
+    ld c, 15
+    call GetScreenPos
+    ld de, AlienGraphic_8x8_2
+    ld a, 1
+    call DrawHorizontalBar
+    
     ld a, $7f
     in a, ($fe)
     bit $00, a
