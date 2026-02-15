@@ -56,7 +56,8 @@ Main_AfterGameOver:
     ld (score3Bytes), a 
     ld (score3Bytes+1), a 
     ld (score3Bytes+2), a 
-    
+    call PrintFirstScreen
+
 Main_LevelUpReset:
     ld hl, $4000
     ld (hl), 0
@@ -1711,6 +1712,103 @@ Wait:
 
 ret
 
+PrintFirstScreen
+    ld hl, $4000
+    ld (hl),$ff
+    ld de, $4001
+    ld bc, $1800
+    ldir
+
+    ld hl, $5800
+    ld (hl),8
+    ld de, $5801
+    ld bc, $300
+    ldir
+
+    ld a, 2          ; Open Channel 2
+    call 5633
+    ld de, SCREEN_TEXT_1       ; Address of string
+    ld bc, SCREEN_TEXT_1_END-SCREEN_TEXT_1 ; Length of string
+    call 8252        ; ROM routine to print
+
+    ld a, 2          ; Open Channel 2
+    call 5633
+    ld de, SCREEN_TEXT_2       ; Address of string
+    ld bc, SCREEN_TEXT_2_END-SCREEN_TEXT_2 ; Length of string
+    call 8252        ; ROM routine to print
+
+    ld a, 2          ; Open Channel 2
+    call 5633
+    ld de, SCREEN_TEXT_3       ; Address of string
+    ld bc, SCREEN_TEXT_3_END-SCREEN_TEXT_3 ; Length of string
+    call 8252        ; ROM routine to print
+
+    ld a, 2          ; Open Channel 2
+    call 5633
+    ld de, SCREEN_TEXT_4       ; Address of string
+    ld bc, SCREEN_TEXT_4_END-SCREEN_TEXT_4 ; Length of string
+    call 8252        ; ROM routine to print
+
+
+ScanToStartLoop:
+    ld b, 15
+    ld c, 15
+    call GetScreenPos
+    ld de, AlienGraphic_8x8_1
+    ld a, 1
+    call DrawHorizontalBar
+
+    ld a, $7f
+    in a, ($fe)
+    bit $00, a
+    jr nz, ScanToStartLoop
+    ret         ; never gets here (oooo could same one byte) 
+
+SCREEN_TEXT_1:   
+    defb INK
+    defb 6
+    defb PAPER
+    defb 0
+    defb 22          ; AT control code
+    defb 6           ; Line 6 (Vertical middle)
+    defb 9           ; Column 2 (Horizontal start)
+    DEFB "Alien Invaders"
+SCREEN_TEXT_1_END: EQU $
+
+
+SCREEN_TEXT_2:   
+    defb INK
+    defb 6
+    defb PAPER
+    defb 0
+    defb 22          ; AT control code
+    defb 18         ; Line 18 (Vertical middle)
+    defb 2           ; Column 2 (Horizontal start)
+    DEFB "*** PRESS SPACE TO START ***"
+SCREEN_TEXT_2_END: EQU $
+
+SCREEN_TEXT_3:   
+    defb INK
+    defb 6
+    defb PAPER
+    defb 0
+    defb 22          ; AT control code
+    defb 20           ; Line 20 (Vertical middle)
+    defb 7           ; Column 8 (Horizontal start)
+    DEFB "A. Pilkington 2026"
+SCREEN_TEXT_3_END: EQU $
+
+
+SCREEN_TEXT_4:   
+    defb INK
+    defb 6
+    defb PAPER
+    defb 0
+    defb 22          ; AT control code
+    defb 21           ; Line 6 (Vertical middle)
+    defb 6           ; Column 2 (Horizontal start)
+    DEFB "YouTube: ByteForever"
+SCREEN_TEXT_4_END: EQU $
 
 
 
