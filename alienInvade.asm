@@ -1649,77 +1649,6 @@ MSG_LEVEL:    DEFB 22          ; AT control code
 MSG_LEVEL_END: EQU $
 
 
-; --- Helper: Print 8-bit Byte as Decimal at HL ---
-PrintByteHL:
-    ; Very simple 2-digit version (00-99)
-    ; For 3 digits (0-255), you need a slightly longer division loop
-    ld c, 0              ; Counter for tens
-.tensLoop:
-    cp 10
-    jr c, .doneTens      ; If A < 10, we are done with tens
-    sub 10
-    inc c
-    jr .tensLoop
-.doneTens:
-    ld b, a              ; Store remainder (units) in B
-    
-    ld a, c              ; Get tens count
-    add a, 48            ; Convert to ASCII ('0' = 48)
-    call DrawChar
-    
-    inc hl               ; Move to next screen column
-    
-    ld a, b              ; Get units
-    add a, 48            ; Convert to ASCII
-    call DrawChar
-    ret
-
-DrawChar:
-    push hl
-    ld de, MyFontRAM
-    ld b, 8
-.loop:
-    ld a, (de)
-    ld (hl), a
-    inc de
-    
-    ; Move HL down one scanline safely
-    inc h                ; Move to next scanline
-    ld a, h
-    and 7                ; Check if we crossed a character boundary
-    jr nz, .next
-    ld a, l
-    add a, 32            ; Move to next character row
-    ld l, a
-    jr c, .next
-    ld a, h
-    sub 8                ; Correct H for the block jump
-    ld h, a
-.next:
-    djnz .loop
-    pop hl
-    ret
-
-.drawLoop:
-    ld a, (de)           ; Get byte from font
-    ld (hl), a           ; Write to screen
-    
-    inc de               ; Next byte of font data
-    inc h                ; Move HL down 1 scanline ($0100 bytes)
-    
-    djnz .drawLoop       ; Repeat for all 8 lines
-    
-    pop hl               ; Restore HL to the top-left of the character
-    ret
-
-InitFont:
-    ld hl, $3D00         ; ROM font address
-    ld de, MyFontRAM     ; A safe place in your RAM (e.g., $F000)
-    ld bc, 768           ; 96 characters * 8 bytes
-    ldir
-    ret
-
-
 
 GetNextLine:
 	push af
@@ -2187,11 +2116,8 @@ defb %00000000,%11111111,%11111111,%00011100,%00011100,%11111111,%11111111,%0000
 defb %00000000,%10000000,%11111000,%01111110,%01111110,%11111000,%10000000,%00000000
 
 
-level:
-    defb 0
+level: defb 0
 score3Bytes: defb 0,0,0      ; Stored as: [100k/10k], [1k/100s], [10s/1s]
 highScore3Bytes: defb 0,0,0
-MyFontRAM:
-    defb 768
 
 end $8000
