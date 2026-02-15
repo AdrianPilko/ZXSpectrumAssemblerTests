@@ -27,8 +27,6 @@ C_4_FQ: EQU $0105 / $10
 LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
-;NUMBER_ALIEN_IN_ROW: equ 2
-;NUMBER_ALIEN_ROWS: equ 1
 
 ALIEN_MOVE_TIMER_INIT: equ 30
 ALIEN_MOVE_LIMIT: equ 1
@@ -36,73 +34,10 @@ NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
 TOTAL_NUM_ALIENS: equ 64
-;TOTAL_NUM_ALIENS: equ 2
+
     org $8000
-    defs $190
-
-
-;Start:
-;    call InitFont
-;
-;    di                  ; Disable interrupts during setup
-;    
-;    ; 1. Create the Vector Table at $8000
-;    ld HL, $8000        ; Table starts at $8000
-;    ld a, $81        ; Fill with $81
-;    ld de, $8001
-;    ld (hl), a
-;    ld bc, $0101-1         
-;    ldir                ; fill
-
-;   dec a
-;    ld i, a
-;    ; 2. Place the Interrupt Service Routine (ISR) at $8181
-;    ld a, $C3           ; Opcode for 'JP'
-;    ld ($8181), a
-;    ld hl, MyISR        ; Address of our counter routine
-;    ld ($8182), hl
-
-;    im 2                ; Enter Interrupt Mode 2
-;    ei                  ; re enable interrupts
-;    jp Main_FullReset
-
-;MyISR:
-;    ex af, af'              ; save a and flags to alternate register set
-;        push bc             ; Always save registers as this can and will be asynchronous to the other code
-;        push de
-;        push hl
-;        push ix
-;        push iy
-;            ld hl, FrameCount
-;            inc (hl)
-;        pop iy
-;        pop ix
-;        pop hl
-;        pop de
-;        pop bc
-;    ex af,af'
-;    ei                  ; Re-enable interrupts
-;    reti                ; Return from Interrupt
-;
-
-;WaitFrame:
-;    ld a, (FrameCount)
-;    inc a            ; Target frame, just 1
-;    ld b, a
-;WaitFrame_loop:
-;    halt                ; Wait for the next interrupt
-;
-;    ld a, (FrameCount)
-;    cp b                ; Compare current to target
-;    jr c, WaitFrame_loop
-;    ret
-
-
-;FrameCount: 
-;    defw 0      ; Our 1-byte counter
 
 Main_FullReset:
-    
     ld a, ALIEN_MOVE_TIMER_INIT
     ld (AlienTimerInit), a
     ld a, 1
@@ -123,6 +58,12 @@ Main_AfterGameOver:
     ld (score3Bytes+2), a 
     
 Main_LevelUpReset:
+    ld hl, $4000
+    ld (hl), 0
+    ld de, $4001
+    ld bc, $1800; the size of the screen pixel memory
+    ldir
+
     ld a, (AlienTimerInit)
     dec a 
     cp 0
@@ -131,15 +72,9 @@ Main_LevelUpReset:
     jp z, noUpdateSpeed
     cp 2
     jp z, noUpdateSpeed
-    ld a,(AlienTimerInit)
+    ld (AlienTimerInit), a
 
 noUpdateSpeed:
-    ld hl, $4000
-    ld (hl), 0
-    ld de, $4001
-    ld bc, $1800; the size of the screen pixel memory
-    ldir
-
     ; initialise all the variables apart from highScore
     ld a, 1
     ld (AlienDirection),a 
@@ -236,6 +171,7 @@ noUpdateSpeed:
     call SHOW_SCORE    
     call drawShields
 
+
 MainGAME_loop:
     ; the ld a,5 ; out ($fe) ,  here are debug to give an indication
     ; of the cpu cycles being used, when the colour boarder fills the
@@ -248,7 +184,7 @@ MainGAME_loop:
     
     ld hl, score3Bytes
     ld de, $4000
-    call z, SHOW_SCORE
+    call SHOW_SCORE
 
 ;    ld  a,5                ; Set color (indicates processing start)
 ;    out ($FE), A           ; Port $FE (254) controls the border
@@ -498,8 +434,6 @@ ReallyDrawSprite:
     ret
 
 DrawAliensTimerExpired:
-
-
     ld hl, C_5
     ; DE = duration (frequency)
     ld de, C_5_FQ
@@ -718,19 +652,6 @@ DrawSaucerTimeExpired
     ld a, 1
     ld (saucerXPos), a
     ld (saucerEnabled), a
-    ; also speed the aliens up by 1
-    ;ld a, (AlienTimerInit)
-    ;dec a 
-    ;cp 1        ;; limit alient timer to be at least 1,  otherwise underflows
-    ;ret z       ;; cp 0 set's the zero flag if it is zero
-    ;ld (AlienTimerInit),a
-    ;dec a
-    ;ret z
-    ;ld (AlienTimerInit),a
-    ;dec a
-    ;ret z
-    ;ld (AlienTimerInit),a
-
     ret
 
 ChooseAliens:
@@ -1168,7 +1089,7 @@ skipCheckCollision:
         djnz CheckColisAlienLoop_Cols
     pop bc
     djnz CheckColisAlienLoop_Rows
-EndCheckAliensHit
+EndCheckAliensHit:
     ret
 
 
@@ -1186,18 +1107,13 @@ RocketHIT:
     push hl
         ld de, Explosion
         ld  a,1
-        call DrawHorizontalBar
-    
-    call Delay
-
+        call DrawHorizontalBar    
+        call Delay
     pop hl    
     ld de, GraphicTileBlank_8x8
     ld  a,1
     call DrawHorizontalBar
     
-    ; now blank it (probably won't see the exlposion though TODO FIX!)
-
-
     ld a, (currentAlienValidAddress+0)
     ld l, a
     ld a, (currentAlienValidAddress+1)
@@ -1216,7 +1132,10 @@ RocketHIT:
     cp TOTAL_NUM_ALIENS
     jp z, AllAliensDeadLevelUp
     jp NoLevelUp
-AllAliensDeadLevelUp:    
+
+AllAliensDeadLevelUp:  
+    pop bc 
+
     ld a, 2          ; Open Channel 2 (Upper Screen)
     call ROM_OPEN_CHANNEL
     ld de, MSG_LEVEL_UP       ; Address of string
@@ -1229,10 +1148,9 @@ AllAliensDeadLevelUp:
     call Delay
     call Delay
     call Delay
-
-debugStop:  
-    jp debugStop
-
+    call Delay
+    call Delay
+    call Delay
     jp Main_LevelUpReset ;; restart the game
     
 NoLevelUp:
@@ -1271,7 +1189,7 @@ increaseScore:
     adc a, 0
     daa
     ld (hl), a
-    ret
+    ret 
 
 ; --- MAIN PRINT ROUTINE ---
 
@@ -1615,34 +1533,27 @@ DelayLoop:
     ret
 
 PrintLevel:
-;    ld hl, $400C         ; Screen address (Row 0, Col 12)
-;    ld de, LevelText     ; Point to "LEVEL " string
-;    ld b, 6              ; 6 characters in "LEVEL "
-;    
-;.printString:
-;    ld a, (de)
-;    call DrawChar        ; Your routine to draw a character at (HL)
-;    inc hl               ; Move to next character column
-;    inc de
-;    djnz .printString
-;
-;    ret
-;    
-    ; Now print the 8-bit number (in register A)
-;    ld a, (level) ; Load the 8-bit number
-;    call PrintByteHL     ; Convert A to decimal and draw at HL
-;    ret
-
     LD A, 2          ; Open Channel 2 (Upper Screen)
     CALL 5633
+
+    LD A, PAPER               ; Paper colour
+    RST $10
+    LD A, 2                 ; Red
+    RST $10
+
     LD DE, MSG_LEVEL       ; Address of string
     LD BC, MSG_LEVEL_END - MSG_LEVEL ; Length of string
     CALL 8252        ; ROM routine to print
-    ;ld a, (level) 
+; Now print the 8-bit number (in register A)
+    ld a, (level) ; Load the 8-bit number
+    LD C, A      ; Move the value to be printed into C
+    LD B, 0      ; Clear B so BC = A
+    CALL $1A1B   ; ROM routine to print BC in decimal
     
     ret 
 
-MSG_LEVEL:    DEFB 22          ; AT control code
+MSG_LEVEL:    
+    defb AT          ;  control code
     DEFB 0          ; Line 0
     DEFB 9           ; Column 8
     DEFB "LEVEL "
@@ -1921,7 +1832,11 @@ alienCheckCount
     defb 0
 ScoreChanged
     defb 0
+    defb 0
 AlienHitCount:
+    defb 0
+    defb 0
+    defb 0
     defb 0
 AlienLocation:  ; we use the iy register to index through the possible aliens locaitons form here 
 ;;; these are initialised from AlienLocationInits on game restart.
