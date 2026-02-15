@@ -163,7 +163,7 @@ noUpdateSpeed:
     call PrintLevel
 
     ld hl,highScore3Bytes
-    ld de, $4019
+    ld de, $401a
     call SHOW_SCORE
 
     ld hl,score3Bytes
