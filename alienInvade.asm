@@ -315,6 +315,8 @@ DrawSprite:
     cp 1
     jp nz, ActuallyDrawSprite
 
+    call CheckAliensHit
+
     ld a, (RocketXPos)
     ld b, a
     ld a, (RocketYPos)
@@ -328,20 +330,6 @@ DrawSprite:
     cp b
     jp nz, saucerHitCheckSkip
 
-    ;ld a, SAUCER_Y_POS+1
-    ;cp c
-    ;jp z, saucerHit
-    ;ld a, SAUCER_Y_POS+2
-    ;cp c
-    ;jp z, saucerHit
-    ;ld a, SAUCER_Y_POS+3
-    ;cp c
-    ;jp z, saucerHit
-    ;ld a, SAUCER_Y_POS+4
-    ;cp c
-    ;jp z, saucerHit
-    ;jp saucerHitCheckSkip
-    
   ;; got this far then reset saucer and increase score
 saucerHit:
     ld a, (saucerXPos)
@@ -425,7 +413,7 @@ ActuallyDrawSprite:
 
 ReallyDrawSprite:
     call DrawSprite24x24   ; draw the players space ship
-    call CheckAliensHit
+    ;call CheckAliensHit
 
     ld a, (moveAlienTimer)
     dec a
@@ -444,10 +432,8 @@ DrawAliensTimerExpired:
     call UpdateAlienPositions
     call ChooseAliens
     call DrawAliensThisTime
-
-;stopNow  
-;    jp stopNow
     call CheckIfAlienDirChangeLeft
+
     jp nz, alienDirChange
     call CheckIfAlienDirChangeRight
     jp nz, alienDirChange
@@ -1757,33 +1743,7 @@ PrintFirstScreen
     call 8252        ; ROM routine to print
 
 
-ScanToStartLoop:
-    ld b, 15
-    ld c, 17
-    call GetScreenPos
-    ld de, AlienGraphic_8x8_1
-    ld a, 1
-    call DrawHorizontalBar
-    call Delay
-    call Delay
-    call Delay
-    call Delay
-    ld b, 15
-    ld c, 17
-    call GetScreenPos
-    ld de, SpriteBlank_24x24
-    ld a, 1
-    call DrawHorizontalBar
-    call Delay
-    call Delay
-    call Delay
-    ld b, 15
-    ld c, 15
-    call GetScreenPos
-    ld de, AlienGraphic_8x8_2
-    ld a, 1
-    call DrawHorizontalBar
-    
+ScanToStartLoop:  
     ld a, $7f
     in a, ($fe)
     bit $00, a
