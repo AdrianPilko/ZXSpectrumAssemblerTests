@@ -116,7 +116,7 @@ noUpdateSpeed:
     ld hl, AlienValid           ; use the z80 memory overlap trick to initialise all the AlienValid to 1
     ld (hl), 1
     ld de, AlienValid+1 
-    ld bc, 63
+    ld bc, 64
     ldir 
 
     ld a, 15
@@ -550,7 +550,7 @@ skipCheckAlienHitPlayer:
 findTheFirstLowestAlien:
     ld ix, AlienValid
     ld hl, AlienLocation ; HL points to the start of your 64 bytes
-    ld b, NUMBER_ALIEN_IN_ROW*NUMBER_ALIEN_ROWS    ; Loop counter
+    ld b, NUMBER_ALIEN_IN_ROW * NUMBER_ALIEN_ROWS    ; Loop counter
     ld c, 0              ; Current index (0-63)
     ld d, 0              ; Storage for the "first highest" index
     ld e, 0              ; Current max value (starts at 0)
@@ -658,10 +658,9 @@ Alien_1:
 
 
 DrawAliensThisTimeBLANK:
-    ld iy,AlienLocation
+    ld iy, AlienLocation
     ld hl, AlienValid           ; store first alien valid address used in loop to work out where is hit
     ld (currentAlienValidAddress), hl
- 
     ld b, NUMBER_ALIEN_ROWS
     
 AlienDrawLoop_RowsBL:
@@ -673,64 +672,35 @@ AlienDrawLoop_ColsBL:
             ld h, (iy+1)
             inc iy
             inc iy
-            ld a, 1
-            ;; de already be loaded but save to stack 
-            push de
-                ; do we need to draw this one?
-                push hl  
-                    ld a, (currentAlienValidAddress+0)
-                    ld l, a
-                    ld a, (currentAlienValidAddress+1)
-                    ld h, a             
-                    ld a, (hl)
-                    cp 1
-                pop hl
-                jp nz, skipDrawThisAlienBL
+            ; do we need to draw this one?
+            push hl  
+                ld a, (currentAlienValidAddress+0)
+                ld l, a
+                ld a, (currentAlienValidAddress+1)
+                ld h, a             
+                ld a, (hl)
+                cp 1
+            pop hl
+            jp nz, skipDrawThisAlienBLANK
 
-                ld de, GraphicTileBlank_8x8
-                ld a, 1
-                call DrawHorizontalBar
-skipDrawThisAlienBL:
-                ld hl, (currentAlienValidAddress)  
-                inc hl 
-                ld (currentAlienValidAddress),hl   
-            pop de
+            ld de, GraphicTileBlank_8x8
+            ld a, 1
+            call DrawHorizontalBar
+skipDrawThisAlienBLANK:
+            ld hl, (currentAlienValidAddress)  
+            inc hl 
+            ld (currentAlienValidAddress),hl   
         pop bc
         djnz AlienDrawLoop_ColsBL   
-
-        ; draw alternating rows with different alien sprite
-        ld a, (rowEvenOddToggle)
-        inc a 
-        ld (rowEvenOddToggle),a
-        bit 0, a 
-        jp nz, subtractAlienSpriteDEBL 
-        ld hl, -16
-        add hl, de
-        push hl 
-        pop de
-        jp nextLoopDrawAlienRowBL
-subtractAlienSpriteDEBL:
-        ld hl, 16
-        add hl, de      
-        push hl 
-        pop de
-nextLoopDrawAlienRowBL:
     pop bc
     djnz AlienDrawLoop_RowsBL
     ret
 
 
-
-
-
-
-
-
 DrawAliensThisTime:
-    ld iy,AlienLocation
+    ld iy, AlienLocation
     ld hl, AlienValid           ; store first alien valid address used in loop to work out where is hit
     ld (currentAlienValidAddress), hl
- 
     ld b, NUMBER_ALIEN_ROWS
     
 AlienDrawLoop_Rows:
@@ -742,7 +712,6 @@ AlienDrawLoop_Cols:
             ld h, (iy+1)
             inc iy
             inc iy
-            ld a, 1
             ;; de already be loaded but save to stack 
             push de
                 ; do we need to draw this one?
