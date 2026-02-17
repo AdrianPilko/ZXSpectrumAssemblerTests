@@ -29,8 +29,7 @@ NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
 
 ALIEN_MOVE_TIMER_INIT: equ 30
-ALIEN_MOVE_LIMIT: equ 1
-NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 3
+NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 2
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
 TOTAL_NUM_ALIENS: equ 64
@@ -102,7 +101,6 @@ noUpdateSpeed:
     ld (movedLeftFlag), a
     ld (alienCheckCount), a
     ld (ScoreChanged), a
-    ld (AlienHitCount), a
     ld a, 20
     ld (moveAlienTimer),a
     ld a, 60
@@ -116,8 +114,10 @@ noUpdateSpeed:
     ld hl, AlienValid           ; use the z80 memory overlap trick to initialise all the AlienValid to 1
     ld (hl), 1
     ld de, AlienValid+1 
-    ld bc, 64
+    ld bc, 63
     ldir 
+    xor a
+    ld (AlienHitCount), a
 
     ld a, 15
     ld (SpriteXPos), a
@@ -136,15 +136,12 @@ noUpdateSpeed:
     LD BC, 64     
     LDIR             ; Rapid block copy
  
- 
-
     LD HL, 22528+544     ; Start of Attribute Memory
     LD (HL), 5      
     LD DE, 22529+544     ; Point to next byte
     LD BC, 96      
     LDIR             ; Rapid block copy
-
-
+    
     LD HL, 22528+640     ; Start of Attribute Memory
     LD (HL), 4     
     LD DE, 22529+640     ; Point to next byte
@@ -174,23 +171,15 @@ noUpdateSpeed:
 
 
 MainGAME_loop:
-    ; the ld a,5 ; out ($fe) ,  here are debug to give an indication
-    ; of the cpu cycles being used, when the colour boarder fills the
-    ; whole screen means run out of time before next tv frame is being drawn
-  
  ;   call WaitFrame im2 was causing problems with rom routines, don't need it anyway
  ; since we only need to sync to screen which halt does
     halt
-
-    
     ld hl, score3Bytes
     ld de, $4000
     call SHOW_SCORE
-
 ;    ld  a,5                ; Set color (indicates processing start)
 ;    out ($FE), A           ; Port $FE (254) controls the border
     call ScanTheKeyBoard    ; main program code
-    
 ;    ld a, 0                ; Set color to BLACK (indicates processing end)
 ;    out ($FE), A
                             ; Any remaining space in the border is "idle" time
@@ -230,12 +219,6 @@ ScanKey_Space:
     set $04, d   
 
 DoneScanKeys: 
-
-    ; check if d bit zero set
-    bit $00, d
-    jr nz, MoveSpriteUp
-    bit $01, d
-    jr nz, MoveSpriteDown
     bit $02, d
     jr nz, MoveSpriteLeft
     bit $03, d
@@ -244,29 +227,6 @@ DoneScanKeys:
     jp nz, FireRocket
     jp DrawSprite
 
-
-MoveSpriteUp:
-;    call DrawBlank24_24
-;    ld a, (SpriteYPos)
-;    dec a
-;    cp 9
-;    jp z, DrawSprite 
-;    dec a
-;    cp 9
-;    jp z, DrawSprite 
-;    dec a
-;    cp 9
-;    jp z, DrawSprite 
-;    ld (SpriteYPos),a
-    jp DrawSprite
-MoveSpriteDown:
-;    call DrawBlank24_24
-;    ld a, (SpriteYPos)
-;    inc a
-;    cp 160
-;    jp z, DrawSprite
-;    ld (SpriteYPos),a
-    jp DrawSprite
 MoveSpriteLeft:       
     call DrawBlank24_24
     ld a, (SpriteXPos)
@@ -305,13 +265,12 @@ setupRocket:
     ld de, 20
     ; Jumps to beep
     call beep
-    ;jp DrawSprite.  ; no need for this unless more code under here
-
 
 DrawSprite:    
-    call isShotInFlight
+    call isShotInFlight  ; do alien shot if not already or continue shot
+    
     ; if rocket firing then draw 
-    ld a, (RocketFiring)
+    ld a, (RocketFiring)     ;     this is the players shot
     cp 1
     jp nz, ActuallyDrawSprite
 
@@ -326,7 +285,7 @@ DrawSprite:
     cp 1
     jp nz, saucerHitCheckSkip
 
-    ld a, (saucerXPos)
+    ld a, (saucerXPos) ;only check x position should do y as well!!
     cp b
     jp nz, saucerHitCheckSkip
 
@@ -360,7 +319,7 @@ saucerHitCheckSkip:
     ld (hl),a 
     
     ld a, (RocketYPos)
-    ld b, -8
+    ld b, -1
     add a, b
     
     ld (RocketYPos), a
@@ -413,8 +372,7 @@ ActuallyDrawSprite:
 
 ReallyDrawSprite:
     call DrawSprite24x24   ; draw the players space ship
-    ;call CheckAliensHit
-
+    
     ld a, (moveAlienTimer)
     dec a
     ld (moveAlienTimer),a
@@ -1886,19 +1844,20 @@ alienCheckCount
 ScoreChanged
     defb 0
     defb 0
-AlienHitCount:
-    defb 0
-    defb 0
-    defb 0
-    defb 0
+
 AlienLocation:  ; we use the iy register to index through the possible aliens locaitons form here 
 ;;; these are initialised from AlienLocationInits on game restart.
 ;; there's 128 because 64 aliens but 2 bytes per location which is a screen memory address
     defs 256, 0
 
 AlienValid: ; define 64 bytes set to 1, could save memeory with bit compression, but we have a massive 48K!!!
-    defs 8*8, 1
-
+    defs 64, 1
+    defb 0
+    defb 0
+    defb 0
+    defb 0
+AlienHitCount:
+    defb 0
 ;;; we need a copy of the alien locations which is to allow for game restarts
 AlienLocationInits:  ; we use the iy register to index through the possible aliens locaitons form here 
     ; row 1
