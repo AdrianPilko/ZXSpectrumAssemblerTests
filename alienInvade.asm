@@ -58,12 +58,13 @@ Main_AfterGameOver:
     call PrintFirstScreen
 
 Main_LevelUpReset:
+    halt
     ld hl, $4000
     ld (hl), 0
     ld de, $4001
-    ld bc, $1800; the size of the screen pixel memory
+    ld bc, $17ff; the size of the screen pixel memory -1
     ldir
-
+    
     ld a, (AlienTimerInit)
     dec a 
     cp 0
@@ -81,8 +82,6 @@ noUpdateSpeed:
     xor a
     ld (rowEvenOddToggle),a    
     ld (alienLeftRightCount),a
-    ld (currentAlienValidAddress+0),a
-    ld (currentAlienValidAddress+1),a
     ld (saucerFrameCount), a
     ld (saucerXPos), a
     ld (saucerEnabled), a
@@ -173,16 +172,18 @@ noUpdateSpeed:
 MainGAME_loop:
  ;   call WaitFrame im2 was causing problems with rom routines, don't need it anyway
  ; since we only need to sync to screen which halt does
+    
     halt
     ld hl, score3Bytes
     ld de, $4000
     call SHOW_SCORE
-;    ld  a,5                ; Set color (indicates processing start)
-;    out ($FE), A           ; Port $FE (254) controls the border
+    ld  a,5                ; Set color (indicates processing start)
+    out ($FE), A           ; Port $FE (254) controls the border
     call ScanTheKeyBoard    ; main program code
-;    ld a, 0                ; Set color to BLACK (indicates processing end)
-;    out ($FE), A
+    ld a, 0                ; Set color to BLACK (indicates processing end)
+    out ($FE), A
                             ; Any remaining space in the border is "idle" time
+    
     jp MainGAME_loop
 
 ScanTheKeyBoard:
@@ -319,7 +320,7 @@ saucerHitCheckSkip:
     ld (hl),a 
     
     ld a, (RocketYPos)
-    ld b, -1
+    ld b, -8
     add a, b
     
     ld (RocketYPos), a
@@ -438,17 +439,18 @@ isShotInFlight:
     ;; need to store the screen address of the bottom most alien
     ;; in each column
     
-    call findTheFirstLowestAlien ; Returns index (0-63) in d
-    ld l, d
-    ld h, 0
-    ld de, AlienLocation     ; Point to your list of screen addresses
-    add hl, de
-    ld a, (hl)                   ; Get low byte of address
-    inc hl
-    ld h, (hl)                   ; Get high byte of address
-    ld l, a
+    ;call findTheFirstLowestAlien ; Returns index (0-63) in d
+    ;ld l, d
+    ;ld h, 0
+    ;ld de, AlienLocation     ; Point to your list of screen addresses
+    ;add hl, de
+    ld ix, AlienLocation
+    ld l, (ix+0)
+    ld h, (ix+1)
     ld (alienShotAddress), hl    ; HL is now the correct screen address
 
+;debugStop:
+ ;   jp debugStop
 skipAlienFireAsInProgress:
     ld de, (alienShotAddress)  
 
@@ -507,34 +509,19 @@ skipCheckAlienHitPlayer:
 
 findTheFirstLowestAlien:
     ld ix, AlienValid
-    ld hl, AlienLocation ; HL points to the start of your 64 bytes
-    ld b, NUMBER_ALIEN_IN_ROW * NUMBER_ALIEN_ROWS    ; Loop counter
-    ld c, 0              ; Current index (0-63)
-    ld d, 0              ; Storage for the "first highest" index
-    ld e, 0              ; Current max value (starts at 0)
-
+    ld iy, AlienLocation ; HL points to the start of your 64 bytes
+    ld b, NUMBER_ALIEN_IN_ROW    ; Loop counter
+    ld d, 0
 find_first_max:
-    push hl     ; check if the alien is valid
-        ld l, (ix+0)
-        ld h, (ix+1)
+    push bc
+        ; check if the alien is valid
+        ld a, (ix+0)
         inc ix 
-        inc ix 
-        ld a, (hl)
-    pop hl  ; does not affect Z flag
-    cp 1
-    jp nz, skip 
-    ld a, (hl)           ; Load current memory value
-    cp e                 ; Compare with our current max (E)
-    jr z, skip           ; If Equal, skip (keeps the EARLIER index)
-    jr c, skip           ; If Current < Max, skip
-    
-    ; If we are here, Current > Max
-    ld e, a              ; Update max value
-    ld d, c              ; Update index of the first highest
-
+        cp 1
+        jp nz, skip
+        inc d
 skip:
-    inc hl               ; Point to next memory location
-    inc c                ; Increment index tracker
+    pop bc
     djnz find_first_max  ; Loop until B = 0
     ; Result: D = Index of the first occurrence of the highest value
    ret
@@ -617,8 +604,7 @@ Alien_1:
 
 DrawAliensThisTimeBLANK:
     ld iy, AlienLocation
-    ld hl, AlienValid           ; store first alien valid address used in loop to work out where is hit
-    ld (currentAlienValidAddress), hl
+    ld ix, AlienValid           ; store first alien valid address used in loop to work out where is hit
     ld b, NUMBER_ALIEN_ROWS
     
 AlienDrawLoop_RowsBL:
@@ -626,28 +612,19 @@ AlienDrawLoop_RowsBL:
         ld b, NUMBER_ALIEN_IN_ROW
 AlienDrawLoop_ColsBL:
         push bc
+            ; do we need to draw this one? 
+            ld a, (ix+0)
+            inc ix
+            cp 1
+            jp nz, skipDrawThisAlienBLANK
             ld l, (iy+0)
             ld h, (iy+1)
-            inc iy
-            inc iy
-            ; do we need to draw this one?
-            push hl  
-                ld a, (currentAlienValidAddress+0)
-                ld l, a
-                ld a, (currentAlienValidAddress+1)
-                ld h, a             
-                ld a, (hl)
-                cp 1
-            pop hl
-            jp nz, skipDrawThisAlienBLANK
-
             ld de, GraphicTileBlank_8x8
             ld a, 1
             call DrawHorizontalBar
 skipDrawThisAlienBLANK:
-            ld hl, (currentAlienValidAddress)  
-            inc hl 
-            ld (currentAlienValidAddress),hl   
+            inc iy
+            inc iy
         pop bc
         djnz AlienDrawLoop_ColsBL   
     pop bc
@@ -657,8 +634,7 @@ skipDrawThisAlienBLANK:
 
 DrawAliensThisTime:
     ld iy, AlienLocation
-    ld hl, AlienValid           ; store first alien valid address used in loop to work out where is hit
-    ld (currentAlienValidAddress), hl
+    ld ix, AlienValid           ; store first alien valid address used in loop to work out where is hit
     ld b, NUMBER_ALIEN_ROWS
     
 AlienDrawLoop_Rows:
@@ -666,21 +642,12 @@ AlienDrawLoop_Rows:
         ld b, NUMBER_ALIEN_IN_ROW
 AlienDrawLoop_Cols:
         push bc
-            ld l, (iy+0)
-            ld h, (iy+1)
-            inc iy
-            inc iy
             ;; de already be loaded but save to stack 
             push de
                 ; do we need to draw this one?
-                push hl  
-                    ld a, (currentAlienValidAddress+0)
-                    ld l, a
-                    ld a, (currentAlienValidAddress+1)
-                    ld h, a             
-                    ld a, (hl)
-                    cp 1
-                pop hl
+                ld a, (ix+0)
+                inc ix
+                cp 1
                 jp nz, skipDrawThisAlien
                 ;;  the alien is valid check the alien did not reach the bottom
                 ld a, $58
@@ -692,14 +659,13 @@ AlienDrawLoop_Cols:
                 pop bc
                 jp GAME_OVER
 notAtBottom:
-                push hl
-                    ld a, 1
-                    call DrawHorizontalBar
-                pop hl
+                ld l, (iy+0)
+                ld h, (iy+1)
+                ld a, 1
+                call DrawHorizontalBar
 skipDrawThisAlien:
-                ld hl, (currentAlienValidAddress)  
-                inc hl 
-                ld (currentAlienValidAddress),hl   
+                inc iy
+                inc iy                
             pop de
         pop bc
         djnz AlienDrawLoop_Cols   
@@ -967,17 +933,15 @@ CheckAliensHit:
     push hl
     pop de ;; swap hl into de to make comparison possible
     ld iy, AlienLocation
-    ld hl, AlienValid           ; store first alien valid address used in loop to work out where is hit
-    ld (currentAlienValidAddress), hl
+    ld ix, AlienValid           ; store first alien valid address used in loop to work out where is hit
     ld b, NUMBER_ALIEN_ROWS  
 CheckColisAlienLoop_Rows
     push bc
         ld b, NUMBER_ALIEN_IN_ROW
 CheckColisAlienLoop_Cols:
-
-        ; first check this alien position is valid still
-        ld hl, (currentAlienValidAddress)
-        ld a, (hl)
+        ;first check this alien position is valid still, ix is the index into the AlienValid memory
+        ld l,(ix+0)
+        ld a, l
         cp 1
         jp nz, skipCheckCollision
         
@@ -991,15 +955,10 @@ checkLCollision:
         ld a, l
         cp e
         jp z, RocketHIT
-        
 skipCheckCollision:
-
-        ld hl, (currentAlienValidAddress)    ; preload (even if no hit) the AlienValid address
-        inc hl 
-        ld (currentAlienValidAddress),hl   ; preload (even if no hit) the AlienValid address
-        
         inc iy
-        inc iy        
+        inc iy   
+        inc ix     
         djnz CheckColisAlienLoop_Cols
     pop bc
     djnz CheckColisAlienLoop_Rows
@@ -1028,20 +987,16 @@ RocketHIT:
     ld  a,1
     call DrawHorizontalBar
     
-    ld a, (currentAlienValidAddress+0)
-    ld l, a
-    ld a, (currentAlienValidAddress+1)
-    ld h, a
-    xor a
-    ld (hl), a
+    xor a       
+    ld (ix+0), a        ; ix still has the locaiton of the AlienValid memory so set it back to zerp
     ld (RocketFiring),a
     ld a, (AlienHitCount)
     inc a
     ld (AlienHitCount),a
 
     ; increase the score
-    call increaseScore
-    
+    call increaseScore    
+
     ld a, (AlienHitCount)
     cp TOTAL_NUM_ALIENS
     jp z, AllAliensDeadLevelUp
@@ -1055,7 +1010,6 @@ AllAliensDeadLevelUp:
     ld de, MSG_LEVEL_UP       ; Address of string
     ld bc, MSG_LEVEL_UP_END - MSG_LEVEL_UP ; Length of string    
     call ROM_PRINT_STRING        ; ROM routine to print    
-
     ld a, (level) 
     inc a
     ld (level), a   
@@ -1065,6 +1019,7 @@ AllAliensDeadLevelUp:
     call Delay
     call Delay
     call Delay
+    
     jp Main_LevelUpReset ;; restart the game
     
 NoLevelUp:
@@ -1939,8 +1894,6 @@ rowEvenOddToggle
     defb 0
 alienLeftRightCount
     defb 0
-currentAlienValidAddress
-    defw 0,0
 saucerFrameCount:
     defb 0
 saucerTimer:
