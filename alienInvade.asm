@@ -58,13 +58,19 @@ Main_AfterGameOver:
     call PrintFirstScreen
 
 Main_LevelUpReset:
-    halt
+    ld b, 192
     ld hl, $4000
-    ld (hl), 0
-    ld de, $4001
-    ld bc, $17ff; the size of the screen pixel memory -1
-    ldir
-    
+    xor a
+clearScreenNotldir:
+    push bc
+        ld b, 32
+innerLoopClearScreen: 
+        ld (hl), a
+        inc hl
+        djnz innerLoopClearScreen
+    pop bc
+    djnz clearScreenNotldir
+
     ld a, (AlienTimerInit)
     dec a 
     cp 0
@@ -80,6 +86,8 @@ noUpdateSpeed:
     ld a, 1
     ld (AlienDirection),a 
     xor a
+    ld (Main_LevelUpResetFLAG), a
+    ld (rocketHitButNotLevelUp), a
     ld (rowEvenOddToggle),a    
     ld (alienLeftRightCount),a
     ld (saucerFrameCount), a
@@ -174,6 +182,12 @@ MainGAME_loop:
  ; since we only need to sync to screen which halt does
     
     halt
+
+
+    xor a
+    ld (rocketHitButNotLevelUp),a
+    ld (Main_LevelUpResetFLAG),a 
+
     ld hl, score3Bytes
     ld de, $4000
     call SHOW_SCORE
@@ -183,7 +197,14 @@ MainGAME_loop:
     ld a, 0                ; Set color to BLACK (indicates processing end)
     out ($FE), A
                             ; Any remaining space in the border is "idle" time
-    
+    ld a, (rocketHitButNotLevelUp)
+    cp 1
+    jp z, MainGAME_loop
+
+    ld a, (Main_LevelUpResetFLAG)
+    cp 1
+    jp z, Main_LevelUpReset   
+
     jp MainGAME_loop
 
 ScanTheKeyBoard:
@@ -320,7 +341,7 @@ saucerHitCheckSkip:
     ld (hl),a 
     
     ld a, (RocketYPos)
-    ld b, -8
+    ld b, -2
     add a, b
     
     ld (RocketYPos), a
@@ -434,23 +455,11 @@ isShotInFlight:
     ld a, 1
     ld (alienShotInFlightFlag), a 
 
-    ;; we need to chose one of the bottom layer aliens to shoot
-    ;; this is more problematic than it appears as we probably 
-    ;; need to store the screen address of the bottom most alien
-    ;; in each column
-    
-    ;call findTheFirstLowestAlien ; Returns index (0-63) in d
-    ;ld l, d
-    ;ld h, 0
-    ;ld de, AlienLocation     ; Point to your list of screen addresses
-    ;add hl, de
     ld ix, AlienLocation
     ld l, (ix+0)
     ld h, (ix+1)
     ld (alienShotAddress), hl    ; HL is now the correct screen address
 
-;debugStop:
- ;   jp debugStop
 skipAlienFireAsInProgress:
     ld de, (alienShotAddress)  
 
@@ -486,12 +495,12 @@ skipCheckAlienHitPlayer:
     ; 3. Check for boundary ($5800)
     ld a, h                   ; The high byte of screen memory is $40 to $57
     cp $58                    ; Have we hit the attributes?
-    jr nc, .shotFinished      ; If H >= $58, the shot reached the bottom
+    jr nc, shotFinished      ; If H >= $58, the shot reached the bottom
     call NextScan             ; Assuming this calculates the next pixel row
     ; 3. Check for boundary ($5800)
     ld a, h                   ; The high byte of screen memory is $40 to $57
     cp $58                    ; Have we hit the attributes?
-    jr nc, .shotFinished      ; If H >= $58, the shot reached the bottom
+    jr nc, shotFinished      ; If H >= $58, the shot reached the bottom
 
     ; 4. Otherwise, save and draw
     ld (alienShotAddress), hl
@@ -499,7 +508,7 @@ skipCheckAlienHitPlayer:
     ld (hl), a
     ret
 
-.shotFinished:
+shotFinished:
     ld hl, 0
     ld (alienShotAddress), hl ; Set to 0 to indicate no active shot
     xor a 
@@ -954,7 +963,20 @@ CheckColisAlienLoop_Cols:
 checkLCollision:
         ld a, l
         cp e
-        jp z, RocketHIT
+        call z, RocketHIT
+
+        ld a, (rocketHitButNotLevelUp)
+        cp 1
+        pop bc
+        ret z
+        push bc
+
+        ld a, (Main_LevelUpResetFLAG)
+        cp 1
+        pop bc
+        ret z
+        push bc
+
 skipCheckCollision:
         inc iy
         inc iy   
@@ -967,8 +989,6 @@ EndCheckAliensHit:
 
 
 RocketHIT:  
-    pop bc ; have todo this because jumps out of loop early
-
     call beep
     ld a, 0 
     ld (RocketFiring), a
@@ -1000,11 +1020,11 @@ RocketHIT:
     ld a, (AlienHitCount)
     cp TOTAL_NUM_ALIENS
     jp z, AllAliensDeadLevelUp
-    jp NoLevelUp
+    ld a, 1
+    ld (rocketHitButNotLevelUp), a
+    ret
 
 AllAliensDeadLevelUp:  
-    pop bc 
-
     ld a, 2          ; Open Channel 2 (Upper Screen)
     call ROM_OPEN_CHANNEL
     ld de, MSG_LEVEL_UP       ; Address of string
@@ -1019,14 +1039,11 @@ AllAliensDeadLevelUp:
     call Delay
     call Delay
     call Delay
+    ld a, 1 
+    ld (Main_LevelUpResetFLAG), a
+    ret
     
-    jp Main_LevelUpReset ;; restart the game
     
-NoLevelUp:
-    ;; this was jumped to not called
-    jp EndCheckAliensHit
-    ; never gets here
-
 MSG_LEVEL_UP:
    defb  AT    ; control code
    defb  10     ; Line 10 (Vertical middle)
@@ -1910,7 +1927,10 @@ alienFireToggle:
     defb 0
 alienShotInFlightFlag:
     defb 0
-
+Main_LevelUpResetFLAG:
+    defb 0
+rocketHitButNotLevelUp:
+    defb 0
 
 scr_addr_table:
 	dw &4000,&4100,&4200,&4300,&4400,&4500,&4600,&4700
