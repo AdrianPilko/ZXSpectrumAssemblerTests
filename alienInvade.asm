@@ -1,3 +1,20 @@
+;;;;; Adrian Pilkington 2026
+
+;;;;; Basically a simple shoot the aliens game
+;;;;; 
+;;;;;
+;;;;; Known Bugs and Todo list
+;;      1) sometimes it's not triggering rocket hit alien (around call to RocketHIT) 
+;;      2) the side boarders sometimes get trashed when the aliens move further down
+;;      3) would be good to have smooth scrolling rather than character based moves
+;;          (including for the flying saucer)
+;;      4) would be good to have better sound, and reinstate the im2 now the other iy bug fixed
+;;      5) boss levels at end of say 3 main levels would be better
+;;      6) flayer space ship power ups like multiple rockets or shields
+;;      7) better selection of which alien fires shot and maybe more than one at once (esp in later levels)
+;;      8) the shields don't do anything yet - they should protect from fire and not get erroded by any shots
+
+
 
 ;; some helpful equ's
 CLS equ $0d6b
@@ -58,18 +75,12 @@ Main_AfterGameOver:
     call PrintFirstScreen
 
 Main_LevelUpReset:
-    ld b, 192
+
     ld hl, $4000
-    xor a
-clearScreenNotldir:
-    push bc
-        ld b, 32
-innerLoopClearScreen: 
-        ld (hl), a
-        inc hl
-        djnz innerLoopClearScreen
-    pop bc
-    djnz clearScreenNotldir
+    ld (hl), 0
+    ld de, $4001
+    ld bc, $1800
+    ldir
 
     ld a, (AlienTimerInit)
     dec a 
@@ -178,11 +189,11 @@ noUpdateSpeed:
 
 
 MainGAME_loop:
- ;   call WaitFrame im2 was causing problems with rom routines, don't need it anyway
- ; since we only need to sync to screen which halt does
-    
-    halt
 
+    ld iy, $5c00  ; backstop in case jumped back without reenabling
+    ei    
+
+    halt
 
     xor a
     ld (rocketHitButNotLevelUp),a
@@ -191,11 +202,13 @@ MainGAME_loop:
     ld hl, score3Bytes
     ld de, $4000
     call SHOW_SCORE
-    ld  a,5                ; Set color (indicates processing start)
-    out ($FE), A           ; Port $FE (254) controls the border
+    ;ld  a,5                ; Set color (indicates processing start)
+    ;out ($FE), A           ; Port $FE (254) controls the border
+    
     call ScanTheKeyBoard    ; main program code
-    ld a, 0                ; Set color to BLACK (indicates processing end)
-    out ($FE), A
+    
+    ;ld a, 0                ; Set color to BLACK (indicates processing end)
+    ;out ($FE), A
                             ; Any remaining space in the border is "idle" time
     ld a, (rocketHitButNotLevelUp)
     cp 1
@@ -341,7 +354,7 @@ saucerHitCheckSkip:
     ld (hl),a 
     
     ld a, (RocketYPos)
-    ld b, -2
+    ld b, -8
     add a, b
     
     ld (RocketYPos), a
@@ -517,6 +530,8 @@ shotFinished:
 
 
 findTheFirstLowestAlien:
+    di 
+
     ld ix, AlienValid
     ld iy, AlienLocation ; HL points to the start of your 64 bytes
     ld b, NUMBER_ALIEN_IN_ROW    ; Loop counter
@@ -533,7 +548,9 @@ skip:
     pop bc
     djnz find_first_max  ; Loop until B = 0
     ; Result: D = Index of the first occurrence of the highest value
-   ret
+    ld iy, $5c00
+    ei
+    ret
 
 
 DrawSaucerAndUpdate    
@@ -612,6 +629,7 @@ Alien_1:
 
 
 DrawAliensThisTimeBLANK:
+    di 
     ld iy, AlienLocation
     ld ix, AlienValid           ; store first alien valid address used in loop to work out where is hit
     ld b, NUMBER_ALIEN_ROWS
@@ -638,10 +656,14 @@ skipDrawThisAlienBLANK:
         djnz AlienDrawLoop_ColsBL   
     pop bc
     djnz AlienDrawLoop_RowsBL
+    ld iy, $5c00
+    ei
+
     ret
 
 
 DrawAliensThisTime:
+    di
     ld iy, AlienLocation
     ld ix, AlienValid           ; store first alien valid address used in loop to work out where is hit
     ld b, NUMBER_ALIEN_ROWS
@@ -698,6 +720,9 @@ subtractAlienSpriteDE:
 nextLoopDrawAlienRow:
     pop bc
     djnz AlienDrawLoop_Rows
+    ld iy, $5c00
+    ei
+
     ret
 
 GAME_OVER:
@@ -839,6 +864,8 @@ UpdateAlienPositions:
     jp z, AlienMoves_Left
 AlienMoves_Right:
 
+    di
+
     ld iy,AlienLocation
     ld b, NUMBER_ALIEN_ROWS  
 AlienPosUpLoop_Rows:
@@ -860,9 +887,13 @@ AlienPosUpLoop_Cols:
     pop bc
     djnz AlienPosUpLoop_Rows
     call resetAlienRow
+    
+    ld iy, $5c00
+    ei
     ret    
 
 AlienMoves_Left:
+    di
 
     ld iy,AlienLocation
     ld b, NUMBER_ALIEN_ROWS  
@@ -892,6 +923,8 @@ resetAlienRow:
     xor a
     ld (alienLeftRightCount),a 
 
+    di
+
     ld iy, AlienLocation
     ld b, NUMBER_ALIEN_ROWS  
 AlienPosDownLoop_Rows:
@@ -919,6 +952,8 @@ SkipCarrayAddMoveAlienDown:
     djnz AlienPosDownLoop_Rows
 
 skipMoveAliensDown:
+    ld iy, $5c00
+    ei
     ret
 
 ;; should never get here
@@ -941,6 +976,7 @@ CheckAliensHit:
     call GetScreenPos  ; takes bc, x y coord and returns hl screen address
     push hl
     pop de ;; swap hl into de to make comparison possible
+    di
     ld iy, AlienLocation
     ld ix, AlienValid           ; store first alien valid address used in loop to work out where is hit
     ld b, NUMBER_ALIEN_ROWS  
@@ -964,6 +1000,22 @@ checkLCollision:
         ld a, l
         cp e
         call z, RocketHIT
+    
+        ld a, (rocketHitButNotLevelUp)
+        cp 1
+        pop bc
+        ret z
+        push bc
+
+        ld a, (Main_LevelUpResetFLAG)
+        cp 1
+        pop bc
+        ret z
+        push bc
+
+        inc a 
+        cp e
+        call z, RocketHIT
 
         ld a, (rocketHitButNotLevelUp)
         cp 1
@@ -985,6 +1037,8 @@ skipCheckCollision:
     pop bc
     djnz CheckColisAlienLoop_Rows
 EndCheckAliensHit:
+    ld iy, $5c00
+    ei
     ret
 
 
@@ -1025,6 +1079,10 @@ RocketHIT:
     ret
 
 AllAliensDeadLevelUp:  
+
+    ld iy, $5c00  ; backstop in case jumped back without reenabling
+    ei   
+    
     ld a, 2          ; Open Channel 2 (Upper Screen)
     call ROM_OPEN_CHANNEL
     ld de, MSG_LEVEL_UP       ; Address of string
@@ -1041,6 +1099,7 @@ AllAliensDeadLevelUp:
     call Delay
     ld a, 1 
     ld (Main_LevelUpResetFLAG), a
+
     ret
     
     
