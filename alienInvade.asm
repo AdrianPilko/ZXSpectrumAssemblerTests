@@ -75,35 +75,113 @@ Start:
     ld ($8182), hl
 
     im 2                ; Enter Interrupt Mode 2
+    ld hl, startOfISRSoundTable
+    ld (isrSoundCount), hl
     ei                  ; re enable interrupts
     jp Main_FullReset
 
 
 MyISR:
     ex af, af'              ; save a and flags to alternate register set
+        ld  a,5                ; Set color (indicates processing start)
+        out ($FE), A           ; Port $FE (254) controls the border
+        
         push bc             ; Always save registers as this can and will be asynchronous to the other code
         push de
         push hl
         push ix
         push iy
-            ld hl, FrameCount
+            ld hl, FrameCount ; this is for syncing with game loop to frame
+                                ; probably only sync once to keep it speedy enough
             inc (hl)
+
+            ld hl, (isrSoundCount)    ; Load current 16-bit address
+            inc hl                    ; Point to next byte in table
+
+            ; Check if we reached the end
+            ld de, endOfISRSoundTable ; Load the end-marker address
+            or a                     ; Clear Carry flag for SBC
+            sbc hl, de                ; Subtract DE from HL
+            add hl, de                ; Restore HL (SBC modified it)
+
+            jp z, resetISRBeepTable            ; If HL == DE, jump to reset
+            
+            ; If not at end, save the incremented HL back to memory
+            ld (isrSoundCount), hl
+            
+            push af
+                ; Basic er Loop (No border change)
+                ld a, (23624)   ; Load current border color from BORDCR ($5C48)
+                and 7           ; Keep only the border bits (0-2)
+                or 16           ; Set Bit 4 (Speaker ON)
+
+                ld b, 5
+ISRBeepLoop:
+                push bc
+                out (254), a    ; Output to speaker + current border
+                    xor 16          ; Toggle only the speaker bit (Bit 4)
+                    ; Timing delay (determines pitch)
+                    ld a, (hl)
+                    ld b, a
+ISRDelayLoop:
+                    nop
+                    nop
+                    nop
+                    djnz ISRDelayLoop
+                    ; Add loop counters/logic here to control duration
+                pop bc
+                djnz ISRBeepLoop
+            pop af
+            jr skipReset
+resetISRBeepTable:
+        ld hl, startOfISRSoundTable
+        ld (isrSoundCount), hl
+skipReset:
         pop iy
         pop ix
         pop hl
         pop de
         pop bc
+        ld  a,0                ; Set color (indicates isr end)
+        out ($FE), a           ; Port $FE (254) controls the border
+
     ex af,af'
     ei                  ; Re-enable interrupts
     reti                ; Return from Interrupt
 
+isrSoundCount:
+    defw startOfISRSoundTable
+startOfISRSoundTable:
+    defs 10, 1
+    defs 10, 30
+    defs 10, 1
+    defs 10, 10
+    defs 10, 1
+    defs 10, 10
+    defs 10, 1
+    defs 10, 40
+    defs 10, 1
+    defs 10, 40
+    defs 10, 1
+    defs 10, 20
+    defs 10, 1
+    defs 10, 10
+    defs 10, 20
+    defs 10, 1
+    defs 10, 10    
+    defs 10, 30
+    defs 10, 3
+    defs 10, 10   
+endOfISRSoundTable:
 
 WaitFrame:
     ld a, (FrameCount)
     ld b, a
+    inc b
+    inc b
+    inc b
 WaitFrame_loop:
     halt                ; Wait for the next interrupt
-
     ld a, (FrameCount)
     cp b                ; Compare current to target
     jr c, WaitFrame_loop
@@ -265,13 +343,13 @@ MainGAME_loop:
     ld hl, score3Bytes
     ld de, $4000
     call SHOW_SCORE
-   ; ld  a,5                ; Set color (indicates processing start)
-   ; out ($FE), A           ; Port $FE (254) controls the border
+    ld  a,3                ; Set color (indicates processing start)
+    out ($FE), A           ; Port $FE (254) controls the border
     
     call ScanTheKeyBoard    ; main program code
     
-   ; ld a, 0                ; Set color to BLACK (indicates processing end)
-   ; out ($FE), A
+    ld a, 0                ; Set color to BLACK (indicates processing end)
+    out ($FE), A
                             ; Any remaining space in the border is "idle" time
     ld a, (rocketHitButNotLevelUp)
     cp 1
@@ -358,11 +436,8 @@ setupRocket:
     ld a, 1
     ld (RocketFiring),a
 
-    ld hl, 10
-    ; DE = duration (frequency)
-    ld de, 20
-    ; Jumps to beep
-    call beep
+    ;ld b, 20 ; duration (delay)
+    ;call beep
 
 DrawSprite:    
     call isShotInFlight  ; do alien shot if not already or continue shot
@@ -446,11 +521,8 @@ saucerHitCheckSkip:
         
     jp ActuallyDrawSprite
 resetRocket:
-    ; play explosion sound
-    ld hl, $27a0
-    ; DE = frequency
-    ld de, $2b/$20
-    call beep
+    ;ld b, 10
+    ;call beep
     ld a, 0 
     ld (RocketFiring), a
 
@@ -479,11 +551,6 @@ ReallyDrawSprite:
     ret
 
 DrawAliensTimerExpired:
-    ld hl, C_5
-    ; DE = duration (frequency)
-    ld de, C_5_FQ
-    ; Jumps to beep
-    call beep
     call DrawAliensThisTimeBLANK
     call UpdateAlienPositions
     call ChooseAliens
@@ -1107,8 +1174,9 @@ EndCheckAliensHit:
     ret
 
 
-RocketHIT:  
-    call beep
+RocketHIT:
+    ;ld b, 40 ; duration (delay)
+    ;call beep  
     ld a, 0 
     ld (RocketFiring), a
 
@@ -1705,7 +1773,7 @@ beep:
     AND 7           ; Keep only the border bits (0-2)
     OR 16           ; Set Bit 4 (Speaker ON)
 
-    ld b, 10
+    ;; b set to the delay when on by caller
 BeepLoop:
     push bc
     OUT (254), A    ; Output to speaker + current border
