@@ -83,68 +83,58 @@ Start:
 
 MyISR:
     ex af, af'              ; save a and flags to alternate register set
-        ld  a,5                ; Set color (indicates processing start)
-        out ($FE), A           ; Port $FE (254) controls the border
+    exx
+    push ix
+    push iy
+
+        ;ld  a,5                ; Set color (indicates processing start)
+        ;out ($FE), A           ; Port $FE (254) controls the border
+        ld hl, FrameCount ; this is for syncing with game loop to frame
+                            ; probably only sync once to keep it speedy enough
+        inc (hl)
+
+        ld hl, (isrSoundCount)    ; Load current 16-bit address
+        inc hl                    ; Point to next byte in table
+
+        ; Check if we reached the end
+        ld de, endOfISRSoundTable ; Load the end-marker address
+        or a                     ; Clear Carry flag for SBC
+        sbc hl, de                ; Subtract DE from HL
+        add hl, de                ; Restore HL (SBC modified it)
+
+        jp z, resetISRBeepTable            ; If HL == DE, jump to reset
         
-        push bc             ; Always save registers as this can and will be asynchronous to the other code
-        push de
-        push hl
-        push ix
-        push iy
-            ld hl, FrameCount ; this is for syncing with game loop to frame
-                                ; probably only sync once to keep it speedy enough
-            inc (hl)
-
-            ld hl, (isrSoundCount)    ; Load current 16-bit address
-            inc hl                    ; Point to next byte in table
-
-            ; Check if we reached the end
-            ld de, endOfISRSoundTable ; Load the end-marker address
-            or a                     ; Clear Carry flag for SBC
-            sbc hl, de                ; Subtract DE from HL
-            add hl, de                ; Restore HL (SBC modified it)
-
-            jp z, resetISRBeepTable            ; If HL == DE, jump to reset
-            
-            ; If not at end, save the incremented HL back to memory
-            ld (isrSoundCount), hl
-            
-            push af
-                ; Basic er Loop (No border change)
-                ld a, (23624)   ; Load current border color from BORDCR ($5C48)
-                and 7           ; Keep only the border bits (0-2)
-                or 16           ; Set Bit 4 (Speaker ON)
-
-                ld b, 5
-ISRBeepLoop:
-                push bc
-                out (254), a    ; Output to speaker + current border
-                    xor 16          ; Toggle only the speaker bit (Bit 4)
-                    ; Timing delay (determines pitch)
-                    ld a, (hl)
-                    ld b, a
-ISRDelayLoop:
-                    nop
-                    nop
-                    nop
-                    djnz ISRDelayLoop
-                    ; Add loop counters/logic here to control duration
-                pop bc
-                djnz ISRBeepLoop
-            pop af
-            jr skipReset
-resetISRBeepTable:
-        ld hl, startOfISRSoundTable
+        ; If not at end, save the incremented HL back to memory
         ld (isrSoundCount), hl
+        
+        push af
+            ld a, ($5C48)   ; Load current border color from BORDCR ($5C48)
+            and 7           ; Keep only the border bits (0-2)
+            or 16           ; Set Bit 4 (Speaker ON)
+            out ($fe), a    ; Output to speaker + current border
+            push af 
+                ld a, (hl)
+                ld b, a
+ISRDelayLoop:   
+                nop
+                nop
+                nop
+                djnz ISRDelayLoop   
+            pop af
+            xor 16          ; Toggle only the speaker bit (Bit 4)
+            out ($fe), a    ; Output to speaker + current border
+        pop af
+        jr skipReset
+resetISRBeepTable:
+    ld hl, startOfISRSoundTable
+    ld (isrSoundCount), hl
 skipReset:
-        pop iy
-        pop ix
-        pop hl
-        pop de
-        pop bc
-        ld  a,0                ; Set color (indicates isr end)
-        out ($FE), a           ; Port $FE (254) controls the border
+    ;ld  a,0                ; Set color (indicates isr end)
+    ;out ($FE), a           ; Port $FE (254) controls the border
 
+    pop iy
+    pop ix    
+    exx
     ex af,af'
     ei                  ; Re-enable interrupts
     reti                ; Return from Interrupt
@@ -163,13 +153,13 @@ startOfISRSoundTable:
     defs 10, 1
     defs 10, 40
     defs 10, 1
+    defs 10, 50
+    defs 10, 1
+    defs 10, 50
     defs 10, 20
     defs 10, 1
-    defs 10, 10
-    defs 10, 20
-    defs 10, 1
-    defs 10, 10    
-    defs 10, 30
+    defs 10, 40    
+    defs 10, 40
     defs 10, 3
     defs 10, 10   
 endOfISRSoundTable:
@@ -177,7 +167,6 @@ endOfISRSoundTable:
 WaitFrame:
     ld a, (FrameCount)
     ld b, a
-    inc b
     inc b
     inc b
 WaitFrame_loop:
@@ -332,7 +321,6 @@ MainGAME_loop:
     ld iy, $5c00  ; backstop in case jumped back without reenabling
     ei    
 
-    ld a, 1
     ld (FrameCount), a
     call WaitFrame
 
@@ -340,16 +328,16 @@ MainGAME_loop:
     ld (rocketHitButNotLevelUp),a
     ld (Main_LevelUpResetFLAG),a 
 
-    ld hl, score3Bytes
-    ld de, $4000
-    call SHOW_SCORE
-    ld  a,3                ; Set color (indicates processing start)
-    out ($FE), A           ; Port $FE (254) controls the border
+;    ld hl, score3Bytes
+;    ld de, $4000
+;    call SHOW_SCORE
+    ;ld  a,3                ; Set color (indicates processing start)
+    ;out ($FE), A           ; Port $FE (254) controls the border
     
     call ScanTheKeyBoard    ; main program code
     
-    ld a, 0                ; Set color to BLACK (indicates processing end)
-    out ($FE), A
+   ; ld a, 0                ; Set color to BLACK (indicates processing end)
+   ; out ($FE), A
                             ; Any remaining space in the border is "idle" time
     ld a, (rocketHitButNotLevelUp)
     cp 1
@@ -436,8 +424,8 @@ setupRocket:
     ld a, 1
     ld (RocketFiring),a
 
-    ;ld b, 20 ; duration (delay)
-    ;call beep
+    ld b, 20 ; duration (delay)
+    call beep
 
 DrawSprite:    
     call isShotInFlight  ; do alien shot if not already or continue shot
@@ -551,6 +539,10 @@ ReallyDrawSprite:
     ret
 
 DrawAliensTimerExpired:
+    ld hl, score3Bytes
+    ld de, $4000
+    call SHOW_SCORE
+
     call DrawAliensThisTimeBLANK
     call UpdateAlienPositions
     call ChooseAliens
@@ -1175,8 +1167,8 @@ EndCheckAliensHit:
 
 
 RocketHIT:
-    ;ld b, 40 ; duration (delay)
-    ;call beep  
+    ld b, 40 ; duration (delay)
+    call beep  
     ld a, 0 
     ld (RocketFiring), a
 
@@ -1790,11 +1782,19 @@ Wait:
 ret
 
 PrintFirstScreen
+    ld a, 1
+    ld (FrameCount), a
+    call WaitFrame
+
     ld hl, $4000
     ld (hl),$ff
     ld de, $4001
     ld bc, $1800
     ldir
+
+    ld a, 1
+    ld (FrameCount), a
+    call WaitFrame
 
     ld hl, $5800
     ld (hl),8
@@ -1802,6 +1802,9 @@ PrintFirstScreen
     ld bc, $300
     ldir
 
+    ld a, 1
+    ld (FrameCount), a
+    call WaitFrame
 
     ld hl, $5800+$20
     ld (hl),6
@@ -1809,11 +1812,19 @@ PrintFirstScreen
     ld bc, 95
     ldir
 
+    ld a, 1
+    ld (FrameCount), a
+    call WaitFrame
+
     ld a, 2          ; Open Channel 2
     call 5633
     ld de, SCREEN_TEXT_1       ; Address of string
     ld bc, SCREEN_TEXT_1_END-SCREEN_TEXT_1 ; Length of string
     call 8252        ; ROM routine to print
+
+    ld a, 1
+    ld (FrameCount), a
+    call WaitFrame
 
     ld a, 2          ; Open Channel 2
     call 5633
@@ -1821,11 +1832,21 @@ PrintFirstScreen
     ld bc, SCREEN_TEXT_2_END-SCREEN_TEXT_2 ; Length of string
     call 8252        ; ROM routine to print
 
+
+    ld a, 1
+    ld (FrameCount), a
+    call WaitFrame
+
     ld a, 2          ; Open Channel 2
     call 5633
     ld de, SCREEN_TEXT_3       ; Address of string
     ld bc, SCREEN_TEXT_3_END-SCREEN_TEXT_3 ; Length of string
     call 8252        ; ROM routine to print
+
+
+    ld a, 1
+    ld (FrameCount), a
+    call WaitFrame
 
     ld a, 2          ; Open Channel 2
     call 5633
@@ -1835,6 +1856,10 @@ PrintFirstScreen
 
 
 ScanToStartLoop:  
+    ld a, 1
+    ld (FrameCount), a
+    call WaitFrame
+
     ld a, $7f
     in a, ($fe)
     bit $00, a
