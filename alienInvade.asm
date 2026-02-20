@@ -13,7 +13,8 @@
 ;;      6) flayer space ship power ups like multiple rockets or shields
 ;;      7) better selection of which alien fires shot and maybe more than one at once (esp in later levels)
 ;;      8) the shields don't do anything yet - they should protect from fire and not get erroded by any shots
-
+;;      9) better intro screen with high score shown and keys selection
+;;      10) allow player to define keys
 
 
 ;; some helpful equ's
@@ -52,6 +53,66 @@ SAUCER_Y_POS: equ 8
 TOTAL_NUM_ALIENS: equ 64
 
     org $8000
+
+    defs $190
+Start:
+    di                  ; Disable interrupts during setup
+    
+    ; 1. Create the Vector Table at $8000
+    ld HL, $8000        ; Table starts at $8000
+    ld a, $81        ; Fill with $81
+    ld de, $8001
+    ld (hl), a
+    ld bc, $0101-1         
+    ldir                ; fill
+
+    dec a
+    ld i, a
+    ; 2. Place the Interrupt Service Routine (ISR) at $8181
+    ld a, $C3           ; Opcode for 'JP'
+    ld ($8181), a
+    ld hl, MyISR        ; Address of our counter routine
+    ld ($8182), hl
+
+    im 2                ; Enter Interrupt Mode 2
+    ei                  ; re enable interrupts
+    jp Main_FullReset
+
+
+MyISR:
+    ex af, af'              ; save a and flags to alternate register set
+        push bc             ; Always save registers as this can and will be asynchronous to the other code
+        push de
+        push hl
+        push ix
+        push iy
+            ld hl, FrameCount
+            inc (hl)
+        pop iy
+        pop ix
+        pop hl
+        pop de
+        pop bc
+    ex af,af'
+    ei                  ; Re-enable interrupts
+    reti                ; Return from Interrupt
+
+
+WaitFrame:
+    ld a, (FrameCount)
+    ld b, a
+WaitFrame_loop:
+    halt                ; Wait for the next interrupt
+
+    ld a, (FrameCount)
+    cp b                ; Compare current to target
+    jr c, WaitFrame_loop
+    ret
+
+
+FrameCount: 
+    defw 0      ; Our 1-byte counter
+
 
 Main_FullReset:
     ld a, ALIEN_MOVE_TIMER_INIT
@@ -94,6 +155,7 @@ Main_LevelUpReset:
 
 noUpdateSpeed:
     ; initialise all the variables apart from highScore
+    call drawShields
     ld a, 1
     ld (AlienDirection),a 
     xor a
@@ -185,7 +247,6 @@ noUpdateSpeed:
     ld hl,score3Bytes
     ld de, $4000
     call SHOW_SCORE    
-    call drawShields
 
 
 MainGAME_loop:
@@ -193,7 +254,9 @@ MainGAME_loop:
     ld iy, $5c00  ; backstop in case jumped back without reenabling
     ei    
 
-    halt
+    ld a, 1
+    ld (FrameCount), a
+    call WaitFrame
 
     xor a
     ld (rocketHitButNotLevelUp),a
@@ -202,13 +265,13 @@ MainGAME_loop:
     ld hl, score3Bytes
     ld de, $4000
     call SHOW_SCORE
-    ;ld  a,5                ; Set color (indicates processing start)
-    ;out ($FE), A           ; Port $FE (254) controls the border
+   ; ld  a,5                ; Set color (indicates processing start)
+   ; out ($FE), A           ; Port $FE (254) controls the border
     
     call ScanTheKeyBoard    ; main program code
     
-    ;ld a, 0                ; Set color to BLACK (indicates processing end)
-    ;out ($FE), A
+   ; ld a, 0                ; Set color to BLACK (indicates processing end)
+   ; out ($FE), A
                             ; Any remaining space in the border is "idle" time
     ld a, (rocketHitButNotLevelUp)
     cp 1
@@ -792,6 +855,7 @@ HSnotHigher:
 
 
 drawShields:
+    di
     ld de, Shield_24x16
     ld b,4
     ld c,140
@@ -808,8 +872,9 @@ drawShields:
     ld b,25
     ld c,140
     call DrawSprite24x24
-
+    ei
     ret 
+
 CheckIfAlienDirChangeRight
 ;; we check the first and last screen for any values
 ;; but only when that isn't the player or alien shot (which is %00011000)
