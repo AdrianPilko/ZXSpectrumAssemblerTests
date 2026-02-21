@@ -241,6 +241,10 @@ noUpdateSpeed:
     ld (movedLeftFlag), a
     ld (alienCheckCount), a
     ld (ScoreChanged), a
+    ld a, 0
+    ld (musicOnFlag), a
+    ld a, 1
+    ld (directionStartScreen), a
     ld a, 20
     ld (moveAlienTimer),a
     ld a, 60
@@ -1847,6 +1851,23 @@ PrintFirstScreen
 
     call WaitFrame
 
+    ld a, 2          ; Open Channel 2
+    call 5633
+    ld de, SCREEN_TEXT_5       ; Address of string
+    ld bc, SCREEN_TEXT_5_END-SCREEN_TEXT_5 ; Length of string
+    call 8252        ; ROM routine to print
+
+    call WaitFrame
+
+    ld a, 2          ; Open Channel 2
+    call 5633
+    ld de, SCREEN_TEXT_6       ; Address of string
+    ld bc, SCREEN_TEXT_6_END-SCREEN_TEXT_6 ; Length of string
+    call 8252        ; ROM routine to print
+
+
+    call WaitFrame
+
     ld hl, $59a0
     ld (hl),6
     ld de, $59a1
@@ -1971,7 +1992,7 @@ SCREEN_TEXT_1:
     defb PAPER
     defb 0
     defb 22          ; AT control code
-    defb 6           ; Line 6 (Vertical middle)
+    defb 3           ; Line 6 (Vertical middle)
     defb 9           ; Column 2 (Horizontal start)
     DEFB "Alien Invaders"
 SCREEN_TEXT_1_END: EQU $
@@ -2017,6 +2038,29 @@ SCREEN_TEXT_4:
     defb 6           ; Column 2 (Horizontal start)
     DEFB "YouTube: ByteForever"
 SCREEN_TEXT_4_END: EQU $
+
+
+SCREEN_TEXT_5:   
+    defb INK
+    defb 6
+    defb PAPER
+    defb 0
+    defb 22          ; AT control code
+    defb 8           ; Line 6 (Vertical middle)
+    defb 3           ; Column 2 (Horizontal start)
+    DEFB "O left, P right, Space Fire"
+SCREEN_TEXT_5_END: EQU $
+
+SCREEN_TEXT_6:   
+    defb INK
+    defb 6
+    defb PAPER
+    defb 0
+    defb 22          ; AT control code
+    defb 10           ; Line 6 (Vertical middle)
+    defb 6           ; Column 2 (Horizontal start)
+    DEFB "M music on/off"
+SCREEN_TEXT_6_END: EQU $
 
 
 
