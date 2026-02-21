@@ -8,7 +8,7 @@
 ;;      2) the side boarders sometimes get trashed when the aliens move further down
 ;;      3) would be good to have smooth scrolling rather than character based moves
 ;;          (including for the flying saucer)
-;;      4) would be good to have better sound, and reinstate the im2 now the other iy bug fixed
+;; DONE 4) would be good to have better sound, and reinstate the im2 now the other iy bug fixed
 ;;      5) boss levels at end of say 3 main levels would be better
 ;;      6) flayer space ship power ups like multiple rockets or shields
 ;;      7) better selection of which alien fires shot and maybe more than one at once (esp in later levels)
@@ -92,6 +92,10 @@ MyISR:
         ld hl, FrameCount ; this is for syncing with game loop to frame
                             ; probably only sync once to keep it speedy enough
         inc (hl)
+        ; check if the player decided to stop the "music" playing
+        ld a, (musicOnFlag)
+        cp 0
+        jp z, skipMusicInISR
 
         ld hl, (isrSoundCount)    ; Load current 16-bit address
         inc hl                    ; Point to next byte in table
@@ -109,18 +113,16 @@ MyISR:
         
         push af
             ld a, ($5C48)   ; Load current border color from BORDCR ($5C48)
-            and 7           ; Keep only the border bits (0-2)
+            ;and 7           ; Keep only the border bits (0-2)
             or 16           ; Set Bit 4 (Speaker ON)
             out ($fe), a    ; Output to speaker + current border
-            push af 
-                ld a, (hl)
-                ld b, a
+            ld a, (hl)
+            ld b, a
 ISRDelayLoop:   
-                nop
-                nop
-                nop
-                djnz ISRDelayLoop   
-            pop af
+            nop
+            nop
+            djnz ISRDelayLoop   
+            ld a, ($5C48)   ; Load current border color from BORDCR ($5C48)
             xor 16          ; Toggle only the speaker bit (Bit 4)
             out ($fe), a    ; Output to speaker + current border
         pop af
@@ -132,6 +134,7 @@ skipReset:
     ;ld  a,0                ; Set color (indicates isr end)
     ;out ($FE), a           ; Port $FE (254) controls the border
 
+skipMusicInISR:
     pop iy
     pop ix    
     exx
@@ -142,26 +145,16 @@ skipReset:
 isrSoundCount:
     defw startOfISRSoundTable
 startOfISRSoundTable:
-    defs 10, 1
-    defs 10, 30
-    defs 10, 1
-    defs 10, 10
-    defs 10, 1
-    defs 10, 10
-    defs 10, 1
-    defs 10, 40
-    defs 10, 1
-    defs 10, 40
-    defs 10, 1
-    defs 10, 50
-    defs 10, 1
-    defs 10, 50
+    defs 20, 1
     defs 10, 20
-    defs 10, 1
-    defs 10, 40    
-    defs 10, 40
-    defs 10, 3
-    defs 10, 10   
+    defs 20, 1
+    defs 10, 20
+
+    defs 5, 1
+    defs 5, 20
+    defs 5, 1
+    defs 5, 20
+
 endOfISRSoundTable:
 
 WaitFrame:
@@ -321,7 +314,6 @@ MainGAME_loop:
     ld iy, $5c00  ; backstop in case jumped back without reenabling
     ei    
 
-    ld (FrameCount), a
     call WaitFrame
 
     xor a
@@ -379,9 +371,14 @@ ScanKey_Space:
     ld a, $7f
     in a, ($fe)
     bit $00, a
-    jr nz, DoneScanKeys
+    jr nz, ScanKey_M
     set $04, d   
-
+ScanKey_M:          ; to turn music on or off
+    ld a, $7f
+    in a, ($fe)
+    bit $02, a
+    jr nz, DoneScanKeys
+    set $05, d  
 DoneScanKeys: 
     bit $02, d
     jr nz, MoveSpriteLeft
@@ -389,6 +386,22 @@ DoneScanKeys:
     jr nz, MoveSpriteRight
     bit $04, d
     jp nz, FireRocket
+    bit $05, d
+    jp nz, turnMusicOnOff
+    jp DrawSprite
+
+turnMusicOnOff:
+    ld a,(musicOnOffInc)
+    inc a   ; toggle musicOnOffInc
+    ld (musicOnOffInc), a
+    bit 0, a
+    jp z, turnMusicOn
+    xor a
+    ld (musicOnFlag), a
+    jp DrawSprite
+turnMusicOn:    
+    ld a, 1
+    ld (musicOnFlag), a
     jp DrawSprite
 
 MoveSpriteLeft:       
@@ -1098,8 +1111,7 @@ CheckAliensHit:
     ld a, (RocketYPos)
     ld c, a
     call GetScreenPos  ; takes bc, x y coord and returns hl screen address
-    push hl
-    pop de ;; swap hl into de to make comparison possible
+    ex de,hl ;; swap hl into de to make comparison possible
     di
     ld iy, AlienLocation
     ld ix, AlienValid           ; store first alien valid address used in loop to work out where is hit
@@ -1207,6 +1219,7 @@ AllAliensDeadLevelUp:
 
     ld iy, $5c00  ; backstop in case jumped back without reenabling
     ei   
+    call WaitFrame    
     
     ld a, 2          ; Open Channel 2 (Upper Screen)
     call ROM_OPEN_CHANNEL
@@ -1782,38 +1795,24 @@ Wait:
 ret
 
 PrintFirstScreen
-    ld a, 1
-    ld (FrameCount), a
-    call WaitFrame
+                            ;; you'll notice this before any of the bigger copies or calls to ROM
+                            ;; this is due to some race conditions notices with the ISR causing
+    call WaitFrame          ;; corrupted output to screens
 
     ld hl, $4000
-    ld (hl),$ff
+    ld (hl),$0
     ld de, $4001
     ld bc, $1800
     ldir
-
-    ld a, 1
-    ld (FrameCount), a
+    
     call WaitFrame
 
     ld hl, $5800
-    ld (hl),8
+    ld (hl),5
     ld de, $5801
     ld bc, $300
     ldir
 
-    ld a, 1
-    ld (FrameCount), a
-    call WaitFrame
-
-    ld hl, $5800+$20
-    ld (hl),6
-    ld de, $5801+$20
-    ld bc, 95
-    ldir
-
-    ld a, 1
-    ld (FrameCount), a
     call WaitFrame
 
     ld a, 2          ; Open Channel 2
@@ -1822,8 +1821,6 @@ PrintFirstScreen
     ld bc, SCREEN_TEXT_1_END-SCREEN_TEXT_1 ; Length of string
     call 8252        ; ROM routine to print
 
-    ld a, 1
-    ld (FrameCount), a
     call WaitFrame
 
     ld a, 2          ; Open Channel 2
@@ -1832,9 +1829,6 @@ PrintFirstScreen
     ld bc, SCREEN_TEXT_2_END-SCREEN_TEXT_2 ; Length of string
     call 8252        ; ROM routine to print
 
-
-    ld a, 1
-    ld (FrameCount), a
     call WaitFrame
 
     ld a, 2          ; Open Channel 2
@@ -1843,9 +1837,6 @@ PrintFirstScreen
     ld bc, SCREEN_TEXT_3_END-SCREEN_TEXT_3 ; Length of string
     call 8252        ; ROM routine to print
 
-
-    ld a, 1
-    ld (FrameCount), a
     call WaitFrame
 
     ld a, 2          ; Open Channel 2
@@ -1854,17 +1845,108 @@ PrintFirstScreen
     ld bc, SCREEN_TEXT_4_END-SCREEN_TEXT_4 ; Length of string
     call 8252        ; ROM routine to print
 
-
-ScanToStartLoop:  
-    ld a, 1
-    ld (FrameCount), a
     call WaitFrame
 
+    ld hl, $59a0
+    ld (hl),6
+    ld de, $59a1
+    ld bc, 127
+    ldir
+
+ScanToStartLoop:  
+    ld de, bigAlienSprite_inverse
+    ld a, (FirstScreenSpriteX_pos1)
+    ld b, a
+    ld c, 108
+    call DrawSprite24x24
+
+    ld de, bigAlienSprite_inverse
+    ld a, (FirstScreenSpriteX_pos2)
+    ld b, a
+    ld c, 108
+    call DrawSprite24x24
+
+    ld de, bigAlienSprite_inverse
+    ld a, (FirstScreenSpriteX_pos3)
+    ld b, a
+    ld c, 108
+    call DrawSprite24x24
+
+    call WaitFrame
+    call WaitFrame
+    call WaitFrame
+    call WaitFrame
+    call WaitFrame
+    call WaitFrame
+
+
+    ld de, SpriteBlank_24x24
+    ld a, (FirstScreenSpriteX_pos1)
+    ld b, a
+    ld c, 108
+    call DrawSprite24x24
+
+    ld de, SpriteBlank_24x24
+    ld a, (FirstScreenSpriteX_pos2)
+    ld b, a
+    ld c, 108
+    call DrawSprite24x24
+
+    ld de, SpriteBlank_24x24
+    ld a, (FirstScreenSpriteX_pos3)
+    ld b, a
+    ld c, 108
+    call DrawSprite24x24
+
+    ld a, (FirstScreenSpriteX_pos1)
+    inc a
+    cp 16
+    jp nz, skipUpdateFirstScreenAlien
+    ld a, 8
+skipUpdateFirstScreenAlien:
+    ld (FirstScreenSpriteX_pos1), a 
+
+    ld a, (FirstScreenSpriteX_pos2)
+    inc a
+    cp 20
+    jp nz, skipUpdateFirstScreenAlien2
+    ld a, 13 
+skipUpdateFirstScreenAlien2:
+    ld (FirstScreenSpriteX_pos2), a 
+
+    ld a, (FirstScreenSpriteX_pos3)
+    inc a
+    cp 23
+    jp nz, skipUpdateFirstScreenAlien3
+    ld a, 18
+skipUpdateFirstScreenAlien3:
+    ld (FirstScreenSpriteX_pos3), a 
+
+;;ScanKey_M:          ; to turn music on or off
+    ld a, $7f
+    in a, ($fe)
+    bit $02, a
+    jr nz, checkForGameStartKey
+
+    ld a,(musicOnOffInc)
+    inc a   ; toggle musicOnOffInc
+    ld (musicOnOffInc), a
+    bit 0, a
+    jp z, turnMusicOnOffInStartScreen
+    xor a
+    ld (musicOnFlag), a
+    jp checkForGameStartKey
+turnMusicOnOffInStartScreen:    
+    ld a, 1
+    ld (musicOnFlag), a 
+
+checkForGameStartKey
+;; scan space key  
     ld a, $7f
     in a, ($fe)
     bit $00, a
-    jr nz, ScanToStartLoop
-    ret         ; never gets here (oooo could same one byte) 
+    jp nz, ScanToStartLoop
+    ret     
 
 SCREEN_TEXT_1:   
     defb INK
@@ -1877,6 +1959,13 @@ SCREEN_TEXT_1:
     DEFB "Alien Invaders"
 SCREEN_TEXT_1_END: EQU $
 
+
+FirstScreenSpriteX_pos1
+    defb 8
+FirstScreenSpriteX_pos2
+    defb 13
+FirstScreenSpriteX_pos3
+    defb 18
 
 SCREEN_TEXT_2:   
     defb INK
@@ -2232,9 +2321,32 @@ defb %00000000,%00000001,%00011111,%01110111,%01110111,%00011111,%00000001,%0000
 defb %00000000,%11111111,%11111111,%00011100,%00011100,%11111111,%11111111,%00000000
 defb %00000000,%10000000,%11111000,%01111110,%01111110,%11111000,%10000000,%00000000
 
+bigAlienSprite_inverse:
+defb %00000011,%00000100,%00001000,%00001000,%00001000,%00001000,%00001110,%00000001
+defb %11111111,%01000001,%00000000,%11100011,%10100010,%11100011,%00001000,%11111111
+defb %11100000,%00010000,%00001000,%10001000,%10001000,%10001000,%01111000,%10000000
+defb %00000010,%00000100,%00001010,%00010001,%00001000,%00000100,%00000000,%00000001
+defb %00101010,%00101010,%00000000,%00000000,%10000001,%00000000,%00000000,%00010010
+defb %01000000,%00100000,%01010000,%10001000,%00010000,%00100000,%00000000,%00000000
+defb %00000100,%00000000,%00010000,%00000100,%00000000,%00000000,%00000000,%00000000
+defb %01000000,%00000010,%10001000,%00100000,%00000000,%00000000,%00000000,%00000000
+defb %01000000,%00000000,%10000000,%00010000,%00000000,%00000000,%00000000,%00000000
+
+bigAlienSprite:
+defb %11111100,%11111011,%11110111,%11110111,%11110111,%11110111,%11110001,%11111110
+defb %00000000,%10111110,%11111111,%00011100,%01011101,%00011100,%11110111,%00000000
+defb %00011111,%11101111,%11110111,%01110111,%01110111,%01110111,%10000111,%01111111
+defb %11111101,%11111011,%11110101,%11101110,%11110111,%11111011,%11111111,%11111110
+defb %11010101,%11010101,%11111111,%11111111,%01111110,%11111111,%11111111,%11101101
+defb %10111111,%11011111,%10101111,%01110111,%11101111,%11011111,%11111111,%11111111
+defb %11111011,%11111111,%11101111,%11111011,%11111111,%11111111,%11111111,%11111111
+defb %10111111,%11111101,%01110111,%11011111,%11111111,%11111111,%11111111,%11111111
+defb %10111111,%11111111,%01111111,%11101111,%11111111,%11111111,%11111111,%11111111
+
 
 level: defb 0
 score3Bytes: defb 0,0,0      ; Stored as: [100k/10k], [1k/100s], [10s/1s]
 highScore3Bytes: defb 0,0,0
-
+musicOnFlag: defb 0
+musicOnOffInc: defb 0
 end $8000
