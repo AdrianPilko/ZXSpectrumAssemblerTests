@@ -93,48 +93,48 @@ MyISR:
                             ; probably only sync once to keep it speedy enough
         inc (hl)
         ; check if the player decided to stop the "music" playing
-        ld a, (musicOnFlag)
-        cp 0
-        jp z, skipMusicInISR
-
-        ld hl, (isrSoundCount)    ; Load current 16-bit address
-        inc hl                    ; Point to next byte in table
-
-        ; Check if we reached the end
-        ld de, endOfISRSoundTable ; Load the end-marker address
-        or a                     ; Clear Carry flag for SBC
-        sbc hl, de                ; Subtract DE from HL
-        add hl, de                ; Restore HL (SBC modified it)
-
-        jp z, resetISRBeepTable            ; If HL == DE, jump to reset
-        
-        ; If not at end, save the incremented HL back to memory
-        ld (isrSoundCount), hl
-        
-        push af
-            ld a, ($5C48)   ; Load current border color from BORDCR ($5C48)
-            ;and 7           ; Keep only the border bits (0-2)
-            or 16           ; Set Bit 4 (Speaker ON)
-            out ($fe), a    ; Output to speaker + current border
-            ld a, (hl)
-            ld b, a
-ISRDelayLoop:   
-            nop
-            nop
-            djnz ISRDelayLoop   
-            ld a, ($5C48)   ; Load current border color from BORDCR ($5C48)
-            xor 16          ; Toggle only the speaker bit (Bit 4)
-            out ($fe), a    ; Output to speaker + current border
-        pop af
-        jr skipReset
-resetISRBeepTable:
-    ld hl, startOfISRSoundTable
-    ld (isrSoundCount), hl
-skipReset:
-    ;ld  a,0                ; Set color (indicates isr end)
-    ;out ($FE), a           ; Port $FE (254) controls the border
-
-skipMusicInISR:
+;        ld a, (musicOnFlag)
+;        cp 0
+;        jp z, skipMusicInISR
+;
+;        ld hl, (isrSoundCount)    ; Load current 16-bit address
+;        inc hl                    ; Point to next byte in table
+;
+;        ; Check if we reached the end
+;        ld de, endOfISRSoundTable ; Load the end-marker address
+;        or a                     ; Clear Carry flag for SBC
+;        sbc hl, de                ; Subtract DE from HL
+;        add hl, de                ; Restore HL (SBC modified it)
+;
+;        jp z, resetISRBeepTable            ; If HL == DE, jump to reset
+;        
+;        ; If not at end, save the incremented HL back to memory
+;        ld (isrSoundCount), hl
+;        
+;        push af
+;            ld a, ($5C48)   ; Load current border color from BORDCR ($5C48)
+;            ;and 7           ; Keep only the border bits (0-2)
+;            or 16           ; Set Bit 4 (Speaker ON)
+;            out ($fe), a    ; Output to speaker + current border
+;            ld a, (hl)
+;            ld b, a
+;ISRDelayLoop:   
+;            nop
+;            nop
+;            djnz ISRDelayLoop   
+;            ld a, ($5C48)   ; Load current border color from BORDCR ($5C48)
+;            xor 16          ; Toggle only the speaker bit (Bit 4)
+;            out ($fe), a    ; Output to speaker + current border
+;        pop af
+;        jr skipReset
+;resetISRBeepTable:
+;    ld hl, startOfISRSoundTable
+;    ld (isrSoundCount), hl
+;skipReset:
+;    ;ld  a,0                ; Set color (indicates isr end)
+;    ;out ($FE), a           ; Port $FE (254) controls the border
+;
+;skipMusicInISR:
     pop iy
     pop ix    
     exx
@@ -241,7 +241,7 @@ noUpdateSpeed:
     ld (movedLeftFlag), a
     ld (alienCheckCount), a
     ld (ScoreChanged), a
-    ld a, 0
+    ld a, 1
     ld (musicOnFlag), a
     ld a, 1
     ld (directionStartScreen), a
@@ -1778,6 +1778,10 @@ ret
 
 beep:
 ; Basic Beep Loop (No border change)
+    ld a, (musicOnFlag)
+    cp 0
+    jp z, skipSoundInBeep
+
     LD A, (23624)   ; Load current border color from BORDCR ($5C48)
     AND 7           ; Keep only the border bits (0-2)
     OR 16           ; Set Bit 4 (Speaker ON)
@@ -1795,8 +1799,8 @@ Wait:
     pop bc
     ; Add loop counters/logic here to control duration
     djnz BeepLoop
-
-ret
+skipSoundInBeep:
+    ret
 
 PrintFirstScreen
                             ;; you'll notice this before any of the bigger copies or calls to ROM
@@ -1893,8 +1897,7 @@ ScanToStartLoop:
     ld c, 108
     call DrawSprite24x24
 
-    call WaitFrame
-
+    
     ld de, SpriteBlank_24x24
     ld a, (FirstScreenSpriteX_pos1)
     ld b, a
@@ -1983,6 +1986,7 @@ checkForGameStartKey
     ld a, $7f
     in a, ($fe)
     bit $00, a
+
     jp nz, ScanToStartLoop
     ret     
 
@@ -2059,7 +2063,7 @@ SCREEN_TEXT_6:
     defb 22          ; AT control code
     defb 10           ; Line 6 (Vertical middle)
     defb 6           ; Column 2 (Horizontal start)
-    DEFB "M music on/off"
+    DEFB "S sound on/off"
 SCREEN_TEXT_6_END: EQU $
 
 
@@ -2408,7 +2412,7 @@ defb %10111111,%11111111,%01111111,%11101111,%11111111,%11111111,%11111111,%1111
 level: defb 0
 score3Bytes: defb 0,0,0      ; Stored as: [100k/10k], [1k/100s], [10s/1s]
 highScore3Bytes: defb 0,0,0
-musicOnFlag: defb 0
+musicOnFlag: defb 1
 musicOnOffInc: defb 0
 directionStartScreen: defb 1
 end $8000
