@@ -1873,12 +1873,6 @@ ScanToStartLoop:
     call DrawSprite24x24
 
     call WaitFrame
-    call WaitFrame
-    call WaitFrame
-    call WaitFrame
-    call WaitFrame
-    call WaitFrame
-
 
     ld de, SpriteBlank_24x24
     ld a, (FirstScreenSpriteX_pos1)
@@ -1898,29 +1892,52 @@ ScanToStartLoop:
     ld c, 108
     call DrawSprite24x24
 
+    ld a,(directionStartScreen)
+    cp 1
+    jp z, incrementXPosStS
+    jp decrementXPosStS
+incrementXPosStS:
     ld a, (FirstScreenSpriteX_pos1)
     inc a
-    cp 16
-    jp nz, skipUpdateFirstScreenAlien
-    ld a, 8
-skipUpdateFirstScreenAlien:
-    ld (FirstScreenSpriteX_pos1), a 
-
+    ld  (FirstScreenSpriteX_pos1),a
     ld a, (FirstScreenSpriteX_pos2)
     inc a
-    cp 20
-    jp nz, skipUpdateFirstScreenAlien2
-    ld a, 13 
-skipUpdateFirstScreenAlien2:
-    ld (FirstScreenSpriteX_pos2), a 
-
+    ld  (FirstScreenSpriteX_pos2),a
     ld a, (FirstScreenSpriteX_pos3)
     inc a
-    cp 23
-    jp nz, skipUpdateFirstScreenAlien3
-    ld a, 18
-skipUpdateFirstScreenAlien3:
-    ld (FirstScreenSpriteX_pos3), a 
+    ld  (FirstScreenSpriteX_pos3),a
+    jp checkDirectionStartScreen
+
+decrementXPosStS:
+    ld a, (FirstScreenSpriteX_pos1)
+    dec a
+    ld  (FirstScreenSpriteX_pos1),a
+    ld a, (FirstScreenSpriteX_pos2)
+    dec a
+    ld  (FirstScreenSpriteX_pos2),a
+    ld a, (FirstScreenSpriteX_pos3)
+    dec a
+    ld  (FirstScreenSpriteX_pos3),a
+
+
+
+checkDirectionStartScreen:
+    ld a, (FirstScreenSpriteX_pos1)
+    cp 19
+    jp z, changeDirectionLeftStS
+    cp 0
+    jp z, changeDirectionRightStS
+    jp nextCheckStartScreen
+changeDirectionLeftStS:
+    xor a
+    ld (directionStartScreen),a
+    jp nextCheckStartScreen
+changeDirectionRightStS:
+    ld a, 1
+    ld (directionStartScreen),a
+nextCheckStartScreen:
+    
+
 
 ;;ScanKey_M:          ; to turn music on or off
     ld a, $7f
@@ -2325,12 +2342,12 @@ bigAlienSprite_inverse:
 defb %00000011,%00000100,%00001000,%00001000,%00001000,%00001000,%00001110,%00000001
 defb %11111111,%01000001,%00000000,%11100011,%10100010,%11100011,%00001000,%11111111
 defb %11100000,%00010000,%00001000,%10001000,%10001000,%10001000,%01111000,%10000000
-defb %00000010,%00000100,%00001010,%00010001,%00001000,%00000100,%00000000,%00000001
-defb %00101010,%00101010,%00000000,%00000000,%10000001,%00000000,%00000000,%00010010
+defb %00000010,%00000100,%00001010,%00010001,%00001000,%00000100,%00000000,%00000000
+defb %00101010,%00101010,%00000000,%00000000,%10000001,%00000000,%00000000,%00000000
 defb %01000000,%00100000,%01010000,%10001000,%00010000,%00100000,%00000000,%00000000
-defb %00000100,%00000000,%00010000,%00000100,%00000000,%00000000,%00000000,%00000000
-defb %01000000,%00000010,%10001000,%00100000,%00000000,%00000000,%00000000,%00000000
-defb %01000000,%00000000,%10000000,%00010000,%00000000,%00000000,%00000000,%00000000
+defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000
+defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000
+defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000
 
 bigAlienSprite:
 defb %11111100,%11111011,%11110111,%11110111,%11110111,%11110111,%11110001,%11111110
@@ -2349,4 +2366,5 @@ score3Bytes: defb 0,0,0      ; Stored as: [100k/10k], [1k/100s], [10s/1s]
 highScore3Bytes: defb 0,0,0
 musicOnFlag: defb 0
 musicOnOffInc: defb 0
+directionStartScreen: defb 1
 end $8000
