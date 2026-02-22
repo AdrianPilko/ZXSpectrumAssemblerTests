@@ -941,6 +941,17 @@ HSdecided:
     ld de, highScore3Bytes      ; Point to high score (High byte)
     ld b, 3               ; We have 3 bytes to check
     ldir ; bit overkill herre only 3 in loop!!
+
+;TODO doesn't work yet
+;    ld a, 2          ; Open Channel 2
+;    call 5633
+;    ld de, MSG_ENTERNAME       ; Address of string
+;    ld bc, MSG_ENTERNAME_END-MSG_ENTERNAME
+;   call 8252        ; ROM routine to print
+
+    ; get the players name
+;    call GetPlayersName
+
     ret
 
 HSnotHigher:
@@ -948,6 +959,12 @@ HSnotHigher:
     ret
 
 
+MSG_ENTERNAME:
+   defb  AT    ; control code
+   defb  12     ; Line 10 (Vertical middle)
+   defb  1      ; Column 8 (Horizontal start)
+   defb  "Enter name for HS (3)"
+MSG_ENTERNAME_END: EQU $
 
 
 drawShields:
@@ -1873,6 +1890,67 @@ Wait:
     djnz BeepLoop
 skipSoundInBeep:
     ret
+
+
+
+GetPlayersName:
+
+    ld iy, $5c00
+    ei
+
+    ld hl, name_buf    ; point to the 3-byte storage buffer
+    ld b, 3            ; counter for 3 characters
+
+input_loop:
+    push bc            ; save counter
+        push hl            ; save buffer pointer
+
+wait_key:
+            ei                 ; enable interrupts to let the system clock run
+            call $028e        ; call the official KEY-SCAN entry point
+            ld a, (23560)      ; check the LAST-K system variable ($5C08)
+            and a              ; is it 0?
+            jr z, wait_key     ; if 0, keep waiting for a keypress
+
+            ; character is in a. clear last-k to avoid repeating
+            push af            ; save character
+                xor a              
+                ld (23560), a      ; clear last-k
+            pop af             ; restore character
+
+debugstop:
+    jp debugstop
+            ; basic validation: only allow standard characters
+            cp 32              
+            jr c, wait_key
+            cp 123             
+            jr nc, wait_key
+
+        pop hl             ; restore buffer pointer
+        ld (hl), a         ; store character
+        inc hl             ; move to next slot
+        rst 16             ; print character in a to screen
+
+    ; debounce: wait until the key is released
+release_wait:
+        call $028e        
+        ld a, (23560)
+        and a
+        jr nz, release_wait
+
+    pop bc             ; restore counter
+    djnz input_loop    ; repeat 3 times
+    ret   
+
+name_buf: defb 0, 0, 0     ; storage for the 3 characters
+
+
+
+
+
+
+
+
 
 PrintFirstScreen
                             ;; you'll notice this before any of the bigger copies or calls to ROM
