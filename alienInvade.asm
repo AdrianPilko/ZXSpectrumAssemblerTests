@@ -1696,11 +1696,6 @@ PrintLevel:
     LD A, 2          ; Open Channel 2 (Upper Screen)
     CALL 5633
 
-    LD A, PAPER               ; Paper colour
-    RST $10
-    LD A, 2                 ; Red
-    RST $10
-
     LD DE, MSG_LEVEL       ; Address of string
     LD BC, MSG_LEVEL_END - MSG_LEVEL ; Length of string
     CALL 8252        ; ROM routine to print
@@ -1713,9 +1708,13 @@ PrintLevel:
     ret 
 
 MSG_LEVEL:    
-    defb AT          ;  control code
-    DEFB 0          ; Line 0
-    DEFB 9           ; Column 8
+    defb PAPER             ; Paper colour
+    defb 2                 ; red
+    defb INK               ; ink colour
+    defb 6 
+    defb AT                ; print at control code
+    DEFB 0                 ; Line 
+    DEFB 9                 ; Column 
     DEFB "LEVEL "
 MSG_LEVEL_END: EQU $
 
@@ -2076,11 +2075,11 @@ SCREEN_TEXT_1:
     defb PAPER
     defb 0
     defb 22          ; AT control code
-    defb 3           ; Line 6
+    defb 2           ; Line 6
     defb 9           ; Column 2
     DEFB "Alien Invaders"
     defb 22          ; AT control code
-    defb 4           ; line
+    defb 3           ; line
     defb 9           ; Column
     defb "=============="
 SCREEN_TEXT_1_END: EQU $
@@ -2112,7 +2111,7 @@ SCREEN_TEXT_3:
     defb 22          ; AT control code
     defb 19           ; Line 20 (Vertical middle)
     defb 6           ; Column 8 (Horizontal start)
-    DEFB "By A.Pilkington 2026"
+    DEFB 127," A.Pilkington 2026"
 SCREEN_TEXT_3_END: EQU $
 
 
