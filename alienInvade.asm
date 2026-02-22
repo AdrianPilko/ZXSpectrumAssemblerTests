@@ -1894,6 +1894,8 @@ PrintFirstScreen
     ld bc, $300
     ldir
 
+    call drawPlayAreaBorder
+
     call WaitFrame
 
     ld a, 2          ; Open Channel 2
@@ -1954,15 +1956,7 @@ PrintFirstScreen
     ld de, $4872
     call SHOW_HIGH_SCORE_FIRST_SCREEN  
 
-
-
     call WaitFrame
-
-    ld hl, $59a0
-    ld (hl),6
-    ld de, $59a1
-    ld bc, 127
-    ldir
 
 ScanToStartLoop:  
     ld de, bigAlienSprite_inverse
@@ -2033,9 +2027,9 @@ decrementXPosStS:
 
 checkDirectionStartScreen:
     ld a, (FirstScreenSpriteX_pos1)
-    cp 19
+    cp 18
     jp z, changeDirectionLeftStS
-    cp 0
+    cp 1
     jp z, changeDirectionRightStS
     jp nextCheckStartScreen
 changeDirectionLeftStS:
@@ -2117,8 +2111,8 @@ SCREEN_TEXT_3:
     defb 0
     defb 22          ; AT control code
     defb 19           ; Line 20 (Vertical middle)
-    defb 7           ; Column 8 (Horizontal start)
-    DEFB "A. Pilkington 2026"
+    defb 6           ; Column 8 (Horizontal start)
+    DEFB "By A.Pilkington 2026"
 SCREEN_TEXT_3_END: EQU $
 
 
@@ -2153,7 +2147,7 @@ SCREEN_TEXT_6:
     defb 22          ; AT control code
     defb 9           ; Line 6 (Vertical middle)
     defb 3           ; Column 2 (Horizontal start)
-    DEFB "S sound on/off"
+    DEFB "M sound on/off"
 SCREEN_TEXT_6_END: EQU $
 
 
