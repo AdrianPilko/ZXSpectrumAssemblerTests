@@ -96,20 +96,22 @@ MyISR:
         inc (hl)
 
         ; EXPERIMENTAL: check if reset key pressed (in case of crash etc) pressing A key
-        ld d, $00
-        ld a, $fd 
-        in a, ($fe)
-        bit $00, a
-        jp nz, skipFullResetISR
-        ld hl, Main_FullReset
-        pop iy
-        pop ix    
-        push hl
-        exx
-        ex af,af'
-        ei
-        reti
-skipFullResetISR:
+;        ld d, $00
+;        ld a, $fd 
+;        in a, ($fe)
+;        bit $00, a
+;        jp nz, skipFullResetISR
+;        ld hl, Main_FullReset
+;        pop iy
+;        pop ix    
+;        push hl
+;        exx
+;        ex af,af'
+;        ei
+;        reti
+;skipFullResetISR:
+
+
         ; check if the player decided to stop the "music" playing
 ;        ld a, (musicOnFlag)
 ;        cp 0
@@ -1296,7 +1298,60 @@ increaseScore:
     ld (hl), a
     ret 
 
-; --- MAIN PRINT ROUTINE ---
+SHOW_HIGH_SCORE_FIRST_SCREEN
+    ld b, 3             ; Loop for 3 bytes (6 digits)
+byteLoopHS:
+    push bc             ; Save byte counter
+    ld a, (hl)          ; Get current BCD byte (e.g., $05)
+    push hl             ; Save score pointer
+    
+    ; --- 1. Handle High Nibble (Tens) ---
+    push af             ; Save byte for later
+    rrca
+    rrca
+    rrca
+    rrca ; Move high 4 bits to low 4 bits
+    call renderDigitHS   ; Print it
+    inc e               ; Move screen pointer 1 character right
+    
+    ; --- 2. Handle Low Nibble (Units) ---
+    pop af              ; Restore byte
+    call renderDigitHS   ; Print it
+    inc e               ; Move screen pointer 1 character right
+    
+    pop hl              ; Restore score pointer
+    inc hl              ; Point to next byte in ScoreData
+    pop bc              ; Restore byte counter
+    djnz byteLoopHS      ; Repeat for all 3 bytes
+    ret
+
+; --- INTERNAL DIGIT RENDERER ---
+renderDigitHS:
+    and $0F             ; MASK: Keep only 0-9. Prevents 'P' overflow.
+    
+    ; Calculate ROM Font Address
+    ; '0' is at $3D00 + (48 * 8) = $3E80
+    push hl             ; Save HL (the score pointer)
+    ld l, a             ; Put digit in L
+    ld h, 0             ; CLEAR H: If H is not 0, you get 'P'
+    add hl, hl          ; * 2
+    add hl, hl          ; * 4
+    add hl, hl          ; * 8
+    ld bc, $3D80        ; Base address of '0' in ROM
+    add hl, bc          ; HL = Exact address of digit graphics
+    
+    ; Draw 8 scanlines to screen
+    push de             ; Save screen position
+    ld b, 8             ; 8 pixel rows
+lineHS:
+    ld a, (hl)          ; Get font byte
+    ld (de), a          ; Write to screen
+    inc hl
+    inc d               ; Move down 1 scanline (adds 256 to address)
+    djnz lineHS
+    pop de              ; Restore screen position for next digit
+    pop hl              ; Restore score pointer
+    ret
 
 SHOW_SCORE
     ;ld hl, score3Bytes    ; Point to your score
@@ -1887,6 +1942,19 @@ PrintFirstScreen
     ld bc, SCREEN_TEXT_6_END-SCREEN_TEXT_6 ; Length of string
     call 8252        ; ROM routine to print
 
+    call WaitFrame
+
+    ld a, 2          ; Open Channel 2
+    call 5633
+    ld de, SCREEN_TEXT_7       ; Address of string
+    ld bc, SCREEN_TEXT_7_END-SCREEN_TEXT_7 ; Length of string
+    call 8252        ; ROM routine to print
+
+    ld hl,highScore3Bytes
+    ld de, $4872
+    call SHOW_HIGH_SCORE_FIRST_SCREEN  
+
+
 
     call WaitFrame
 
@@ -2037,7 +2105,7 @@ SCREEN_TEXT_2:
     defb PAPER
     defb 0
     defb 22          ; AT control code
-    defb 18         ; Line 18 (Vertical middle)
+    defb 17         ; Line 18 (Vertical middle)
     defb 2           ; Column 2 (Horizontal start)
     DEFB "*** PRESS SPACE TO START ***"
 SCREEN_TEXT_2_END: EQU $
@@ -2048,7 +2116,7 @@ SCREEN_TEXT_3:
     defb PAPER
     defb 0
     defb 22          ; AT control code
-    defb 20           ; Line 20 (Vertical middle)
+    defb 19           ; Line 20 (Vertical middle)
     defb 7           ; Column 8 (Horizontal start)
     DEFB "A. Pilkington 2026"
 SCREEN_TEXT_3_END: EQU $
@@ -2060,7 +2128,7 @@ SCREEN_TEXT_4:
     defb PAPER
     defb 0
     defb 22          ; AT control code
-    defb 21           ; Line 6 (Vertical middle)
+    defb 20           ; Line 6 (Vertical middle)
     defb 6           ; Column 2 (Horizontal start)
     DEFB "YouTube: ByteForever"
 SCREEN_TEXT_4_END: EQU $
@@ -2083,11 +2151,22 @@ SCREEN_TEXT_6:
     defb PAPER
     defb 0
     defb 22          ; AT control code
-    defb 10           ; Line 6 (Vertical middle)
-    defb 6           ; Column 2 (Horizontal start)
+    defb 9           ; Line 6 (Vertical middle)
+    defb 3           ; Column 2 (Horizontal start)
     DEFB "S sound on/off"
 SCREEN_TEXT_6_END: EQU $
 
+
+SCREEN_TEXT_7:   
+    defb INK
+    defb 6
+    defb PAPER
+    defb 0
+    defb 22          ; AT control code
+    defb 11           ; Line 6 (Vertical middle)
+    defb 3           ; Column 2 (Horizontal start)
+    DEFB "--- High Score        ---"
+SCREEN_TEXT_7_END: EQU $
 
 
 
