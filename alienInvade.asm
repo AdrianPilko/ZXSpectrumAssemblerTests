@@ -4,13 +4,15 @@
 ;;;;; 
 ;;;;;
 ;;;;; Known Bugs and Todo list
-;;      1) sometimes it's not triggering rocket hit alien (around call to RocketHIT) 
+;;      1) sometimes it's not triggering rocket hit alien (around call to RocketHIT) - thought I'd fixed this 
+;;         as it looked like the loop was exiting due to ordering of the aliens top row first
+;;         Even afer I revered the order still some issues.
 ;;      2) the side boarders sometimes get trashed when the aliens move further down
 ;;      3) would be good to have smooth scrolling rather than character based moves
 ;;          (including for the flying saucer)
-;; DONE 4) would be good to have better sound, and reinstate the im2 now the other iy bug fixed
+;;      4) would be good to have better sound, and reinstate the im2 now the other iy bug fixed
 ;;      5) boss levels at end of say 3 main levels would be better
-;;      6) flayer space ship power ups like multiple rockets or shields
+;;      6) Player space ship power ups like multiple rockets or shields
 ;;      7) better selection of which alien fires shot and maybe more than one at once (esp in later levels)
 ;;      8) the shields don't do anything yet - they should protect from fire and not get erroded by any shots
 ;;      9) better intro screen with high score shown and keys selection
@@ -92,6 +94,22 @@ MyISR:
         ld hl, FrameCount ; this is for syncing with game loop to frame
                             ; probably only sync once to keep it speedy enough
         inc (hl)
+
+        ; EXPERIMENTAL: check if reset key pressed (in case of crash etc) pressing A key
+        ld d, $00
+        ld a, $fd 
+        in a, ($fe)
+        bit $00, a
+        jp nz, skipFullResetISR
+        ld hl, Main_FullReset
+        pop iy
+        pop ix    
+        push hl
+        exx
+        ex af,af'
+        ei
+        reti
+skipFullResetISR:
         ; check if the player decided to stop the "music" playing
 ;        ld a, (musicOnFlag)
 ;        cp 0
@@ -1996,9 +2014,13 @@ SCREEN_TEXT_1:
     defb PAPER
     defb 0
     defb 22          ; AT control code
-    defb 3           ; Line 6 (Vertical middle)
-    defb 9           ; Column 2 (Horizontal start)
+    defb 3           ; Line 6
+    defb 9           ; Column 2
     DEFB "Alien Invaders"
+    defb 22          ; AT control code
+    defb 4           ; line
+    defb 9           ; Column
+    defb "=============="
 SCREEN_TEXT_1_END: EQU $
 
 
@@ -2203,60 +2225,17 @@ AlienHitCount:
     defb 0
 ;;; we need a copy of the alien locations which is to allow for game restarts
 AlienLocationInits:  ; we use the iy register to index through the possible aliens locaitons form here 
-    ; row 1
-    defW $4042
-    defW $4044
-    defW $4046
-    defW $4048
-    defW $404a
-    defW $404c
-    defW $404e
-    defW $4050
-    ; row 2
-    defW $4062
-    defW $4064
-    defW $4066
-    defW $4068
-    defW $406a
-    defW $406c
-    defW $406e
-    defW $4070
-    ; row 3
-    defW $4082
-    defW $4084
-    defW $4086
-    defW $4088
-    defW $408a
-    defW $408c
-    defW $408e
-    defW $4090
-    ;row 4
-    defW $40a2
-    defW $40a4
-    defW $40a6
-    defW $40a8
-    defW $40aa
-    defW $40ac
-    defW $40ae
-    defW $40b0
-    ; row 5 
-    defW $40c2
-    defW $40c4
-    defW $40c6
-    defW $40c8
-    defW $40ca
-    defW $40cc
-    defW $40ce
-    defW $40d0
-    ;row 6
-    defW $40e2
-    defW $40e4
-    defW $40e6
-    defW $40e8
-    defW $40ea
-    defW $40ec
-    defW $40ee
-    defW $40f0
+; we need to order these in the order from bottom to top to allow shots fired the hit 
+; bottom first
+    ;row 8
+    defW $4822
+    defW $4824
+    defW $4826
+    defW $4828
+    defW $482a
+    defW $482c
+    defW $482e
+    defW $4830
 
     ;row 7
     defW $4802
@@ -2267,16 +2246,64 @@ AlienLocationInits:  ; we use the iy register to index through the possible alie
     defW $480c
     defW $480e
     defW $4810
+    ;row 6
+    defW $40e2
+    defW $40e4
+    defW $40e6
+    defW $40e8
+    defW $40ea
+    defW $40ec
+    defW $40ee
+    defW $40f0
+    ;row 5
+    defW $40c2
+    defW $40c4
+    defW $40c6
+    defW $40c8
+    defW $40ca
+    defW $40cc
+    defW $40ce
+    defW $40d0
 
-    ;row 8
-    defW $4822
-    defW $4824
-    defW $4826
-    defW $4828
-    defW $482a
-    defW $482c
-    defW $482e
-    defW $4830
+    ;row 4
+    defW $40a2
+    defW $40a4
+    defW $40a6
+    defW $40a8
+    defW $40aa
+    defW $40ac
+    defW $40ae
+    defW $40b0
+
+    ; row 3
+    defW $4082
+    defW $4084
+    defW $4086
+    defW $4088
+    defW $408a
+    defW $408c
+    defW $408e
+    defW $4090
+
+    ; row 2
+    defW $4062
+    defW $4064
+    defW $4066
+    defW $4068
+    defW $406a
+    defW $406c
+    defW $406e
+    defW $4070
+
+    ; row 1
+    defW $4042
+    defW $4044
+    defW $4046
+    defW $4048
+    defW $404a
+    defW $404c
+    defW $404e
+    defW $4050
 
 rowEvenOddToggle
     defb 0
@@ -2415,4 +2442,5 @@ highScore3Bytes: defb 0,0,0
 musicOnFlag: defb 1
 musicOnOffInc: defb 0
 directionStartScreen: defb 1
+
 end $8000
