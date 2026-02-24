@@ -1,0 +1,2 @@
+rm -f  hello.tap
+pasmo -1 --tapbas asmHello.asm hello.tap

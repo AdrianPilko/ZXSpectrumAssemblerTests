@@ -57,7 +57,7 @@ TOTAL_NUM_ALIENS: equ 64
     org $8000
 
     defs $190
-Start:
+
     di                  ; Disable interrupts during setup
     
     ; 1. Create the Vector Table at $8000
@@ -323,6 +323,8 @@ noUpdateSpeed:
 
     call drawPlayAreaBorder
     call PrintLevel
+
+    
 
     ld hl,highScore3Bytes
     ld de, $401a
@@ -943,14 +945,13 @@ HSdecided:
     ldir ; bit overkill herre only 3 in loop!!
 
 ;TODO doesn't work yet
-;    ld a, 2          ; Open Channel 2
-;    call 5633
-;    ld de, MSG_ENTERNAME       ; Address of string
-;    ld bc, MSG_ENTERNAME_END-MSG_ENTERNAME
-;   call 8252        ; ROM routine to print
-
-    ; get the players name
-;    call GetPlayersName
+    ld a, 2          ; Open Channel 2
+    call 5633
+    ld de, MSG_ENTERNAME       ; Address of string
+    ld bc, MSG_ENTERNAME_END-MSG_ENTERNAME
+    call 8252        ; ROM routine to print
+;get the players name
+    call GetPlayersName
 
     ret
 
@@ -963,7 +964,7 @@ MSG_ENTERNAME:
    defb  AT    ; control code
    defb  12     ; Line 10 (Vertical middle)
    defb  1      ; Column 8 (Horizontal start)
-   defb  "Enter name for HS (3)"
+   defb  "Enter high score name:"
 MSG_ENTERNAME_END: EQU $
 
 
@@ -1894,56 +1895,206 @@ skipSoundInBeep:
 
 
 GetPlayersName:
-
-    ld iy, $5c00
-    ei
-
-    ld hl, name_buf    ; point to the 3-byte storage buffer
-    ld b, 3            ; counter for 3 characters
-
-input_loop:
-    push bc            ; save counter
-        push hl            ; save buffer pointer
-
+    ld hl, name_buf    ; point to the 5-byte storage buffer
+    ld b, 6            ; counter for 5 characters
+nameKeyInLoop:
+    push bc
+        push hl
 wait_key:
-            ei                 ; enable interrupts to let the system clock run
-            call $028e        ; call the official KEY-SCAN entry point
-            ld a, (23560)      ; check the LAST-K system variable ($5C08)
-            and a              ; is it 0?
-            jr z, wait_key     ; if 0, keep waiting for a keypress
+            call WaitFrame
+            call WaitFrame
 
-            ; character is in a. clear last-k to avoid repeating
-            push af            ; save character
-                xor a              
-                ld (23560), a      ; clear last-k
-            pop af             ; restore character
+            ld bc, 0xfdfe      ; port for keys A, S, D, F, G
+            in a, (c)          
+            bit 0, a           
+            jp z, a_pressed    
+            bit 1, a           
+            jp z, s_pressed    
+            bit 2, a           
+            jp z, d_pressed    
+            bit 3, a           
+            jp z, f_pressed    
+            bit 4, a           
+            jp z, g_pressed    
+ 
+            ld bc, 0xbffe      ; port for keys h, j, k, l
+            in a, (c)          
+            bit 4, a           
+            jp z, h_pressed    
+            bit 3, a           
+            jp z, j_pressed    
+            bit 2, a           
+            jp z, k_pressed    
+            bit 1, a           
+            jp z, l_pressed    
 
-debugstop:
-    jp debugstop
-            ; basic validation: only allow standard characters
-            cp 32              
-            jr c, wait_key
-            cp 123             
-            jr nc, wait_key
+            ld bc, 0xfbfe      ; port for keys q, w, e, r, t
+            in a, (c)          
+            bit 0, a           
+            jp z, q_pressed    
+            bit 1, a           
+            jp z, w_pressed    
+            bit 2, a           
+            jp z, e_pressed    
+            bit 3, a           
+            jp z, r_pressed    
+            bit 4, a           
+            jp z, t_pressed    
+           
+            ld bc, 0xdffe      ; port for keys y,u,i,o,p
+            in a, (c)          
+            bit 4, a           
+            jp z, y_pressed    
+            bit 3, a           
+            jp z, u_pressed    
+            bit 2, a           
+            jp z, i_pressed    
+            bit 1, a           
+            jp z, o_pressed    
+            bit 0, a           
+            jp z, p_pressed    
+           
 
-        pop hl             ; restore buffer pointer
-        ld (hl), a         ; store character
-        inc hl             ; move to next slot
-        rst 16             ; print character in a to screen
+            ld bc, 0xfefe      ; port for keys zxcv
+            in a, (c)          
+            bit 1, a           
+            jp z, z_pressed    
+            bit 2, a           
+            jp z, x_pressed    
+            bit 3, a           
+            jp z, c_pressed    
+            bit 4, a           
+            jp z, v_pressed    
 
-    ; debounce: wait until the key is released
-release_wait:
-        call $028e        
-        ld a, (23560)
-        and a
-        jr nz, release_wait
+            ld bc, 0x7ffe      ; port for keys bmn space
+            in a, (c)          
+            bit 4, a           
+            jp z, b_pressed    
+            bit 3, a           
+            jp z, n_pressed    
+            bit 2, a           
+            jp z, m_pressed    
+            bit 0, a           
+            jp z, space_pressed    
 
-    pop bc             ; restore counter
-    djnz input_loop    ; repeat 3 times
-    ret   
+            jp wait_key
+a_pressed:
+        ld a, 'a'
+        jp getNamePrintIt
+s_pressed:
+        ld a, 's'
+        jp getNamePrintIt
+d_pressed:
+        ld a, 'd'
+        jp getNamePrintIt
+f_pressed:
+        ld a, 'f'
+        jp getNamePrintIt
+g_pressed:
+        ld a, 'g'
+        jp getNamePrintIt
+h_pressed:
+        ld a, 'h'
+        jp getNamePrintIt
+j_pressed:
+        ld a, 'j'
+        jp getNamePrintIt
+k_pressed:
+        ld a, 'k'
+        jp getNamePrintIt
+l_pressed:
+        ld a, 'l'
+        jp getNamePrintIt
 
-name_buf: defb 0, 0, 0     ; storage for the 3 characters
 
+q_pressed:
+        ld a, 'q'
+        jp getNamePrintIt
+w_pressed:
+        ld a, 'w'
+        jp getNamePrintIt
+e_pressed:
+        ld a, 'e'
+        jp getNamePrintIt
+r_pressed:
+        ld a, 'r'
+        jp getNamePrintIt
+t_pressed:
+        ld a, 't'
+        jp getNamePrintIt
+
+
+
+y_pressed:
+        ld a, 'y'
+        jp getNamePrintIt
+u_pressed:
+        ld a, 'u'
+        jp getNamePrintIt
+i_pressed:
+        ld a, 'i'
+        jp getNamePrintIt
+o_pressed:
+        ld a, 'o'
+        jp getNamePrintIt
+p_pressed:
+        ld a, 'p'
+        jp getNamePrintIt
+
+
+z_pressed:
+        ld a, 'z'
+        jp getNamePrintIt
+x_pressed:
+        ld a, 'x'
+        jp getNamePrintIt
+c_pressed:
+        ld a, 'c'
+        jp getNamePrintIt
+v_pressed:
+        ld a, 'v'
+        jp getNamePrintIt
+b_pressed:
+        ld a, 'b'
+        jp getNamePrintIt
+n_pressed:
+        ld a, 'n'
+        jp getNamePrintIt
+m_pressed:
+        ld a, 'm'
+        jp getNamePrintIt
+space_pressed:
+        ld a, ' '
+        jp getNamePrintIt
+
+
+getNamePrintIt:
+            push af
+                rst 16             ; print it
+            pop af
+        pop hl
+        ld (hl),a
+        inc hl
+    pop bc
+    dec b
+    ld a, b
+    cp 0
+    jp z, returnGetName
+    jp nz, nameKeyInLoop
+returnGetName:
+    ret
+
+nameBufStrWithControlCodes: 
+    defb INK
+    defb 6
+    defb PAPER
+    defb 0
+    defb 22          ; AT control code
+    defb 11          ; row
+    defb 7           ; Column
+name_buf:
+    defb 'a','d','r','i','a','n'     ; storage for the 6 characters - defaults to me:)
+END_nameBufStrWithControlCodes: equ $
 
 
 
@@ -2027,6 +2178,16 @@ PrintFirstScreen
     call 5633
     ld de, SCREEN_TEXT_7       ; Address of string
     ld bc, SCREEN_TEXT_7_END-SCREEN_TEXT_7 ; Length of string
+    call 8252        ; ROM routine to print
+
+
+
+    call WaitFrame
+
+    ld a, 2          ; Open Channel 2
+    call 5633
+    ld de, nameBufStrWithControlCodes       ; Address of string
+    ld bc, END_nameBufStrWithControlCodes-nameBufStrWithControlCodes ; Length of string
     call 8252        ; ROM routine to print
 
     ld hl,highScore3Bytes
@@ -2211,7 +2372,7 @@ SCREEN_TEXT_5:
     defb PAPER
     defb 0
     defb 22          ; AT control code
-    defb 8           ; Line 6 (Vertical middle)
+    defb 6           ; Line 6 (Vertical middle)
     defb 3           ; Column 2 (Horizontal start)
     DEFB "O left, P right, Space Fire"
 SCREEN_TEXT_5_END: EQU $
@@ -2222,7 +2383,7 @@ SCREEN_TEXT_6:
     defb PAPER
     defb 0
     defb 22          ; AT control code
-    defb 9           ; Line 6 (Vertical middle)
+    defb 7           ; Line 6 (Vertical middle)
     defb 3           ; Column 2 (Horizontal start)
     DEFB "M sound on/off"
 SCREEN_TEXT_6_END: EQU $
@@ -2234,9 +2395,9 @@ SCREEN_TEXT_7:
     defb PAPER
     defb 0
     defb 22          ; AT control code
-    defb 11           ; Line 6 (Vertical middle)
-    defb 3           ; Column 2 (Horizontal start)
-    DEFB "--- High Score        ---"
+    defb 10          ; row
+    defb 7           ; Column
+    DEFB "--- High Score ---"
 SCREEN_TEXT_7_END: EQU $
 
 
