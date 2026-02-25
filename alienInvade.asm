@@ -199,10 +199,14 @@ Main_FullReset:
     ld (AlienTimerInit), a
     ld a, 1
     ld (level), a
+    
+    ;ld a, $10
+    
     xor a
+    ld (highScore3Bytes+1),a
     ld (highScore3Bytes),a 
-    ld (highScore3Bytes+1),a 
     ld (highScore3Bytes+2),a 
+    
 
 Main_AfterGameOver:
     ; just reset the level 
@@ -1903,6 +1907,7 @@ nameKeyInLoop:
 wait_key:
             call WaitFrame
             call WaitFrame
+            call WaitFrame
 
             ld bc, 0xfdfe      ; port for keys A, S, D, F, G
             in a, (c)          
@@ -2076,6 +2081,19 @@ getNamePrintIt:
         ld (hl),a
         inc hl
     pop bc
+    ld a, b
+    cp 6
+    jp z, captializeFirst
+    jp skipCaptializeFirst
+
+captializeFirst
+    dec hl
+    ld a,(hl)
+    ld c, -32
+    add a, c
+    ld (hl), a
+    inc hl
+skipCaptializeFirst:
     dec b
     ld a, b
     cp 0
