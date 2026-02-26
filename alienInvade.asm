@@ -200,10 +200,9 @@ Main_FullReset:
     ld a, 1
     ld (level), a
     
-    ;ld a, $10
-    
-    xor a
+    ld a, $10
     ld (highScore3Bytes+1),a
+    xor a
     ld (highScore3Bytes),a 
     ld (highScore3Bytes+2),a 
     
