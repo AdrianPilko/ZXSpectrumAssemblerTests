@@ -778,14 +778,18 @@ DrawSaucerTimeExpired
     ld (saucerEnabled), a
     ret
 
+;; we need to select not only the alernating row alien but 
+;; also the bit offset to make pixel movement possible
 ChooseAliens:
     ld a, (AlienFrameCounter)
     inc a 
     ld (AlienFrameCounter) , a
     bit 0, a
     jp nz, Alien_1 
-Alien_2:
+Alien_2: 
     ld de, AlienGraphic_8x8_2
+    ; we need the correct shifted sprite from this base
+    
     ret
 Alien_1:
     ld de, AlienGraphic_8x8_1
@@ -869,10 +873,14 @@ AlienDrawLoop_Cols:
                 jp GAME_OVER
 notAtBottom:
 ;;;;;;; THIS IS THE BIT THAT DRAWS A SINGLE ALIEN
-                ld l, (iy+0) ; load the screen position, which is offset by iy -> the alien Number
-                ld h, (iy+1)
-                ld a, 1     ; a is the length in 8bit characters to draw
-                call DrawHorizontalBar
+                push hl
+                    ld l, (iy+0) ; load the screen position, which is offset by iy -> the alien Number
+                    ld h, (iy+1)
+                    ;; de preloaded with the correct sprite to draw
+                    ;; both per row and shifted by one pixel if required
+                    ld a, 1     ; a is the length in 8bit characters to draw
+                    call DrawHorizontalBar
+                pop hl
 skipDrawThisAlien:
                 inc iy
                 inc iy                
