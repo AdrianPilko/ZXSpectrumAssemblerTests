@@ -48,7 +48,7 @@ LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
 
-ALIEN_MOVE_TIMER_INIT: equ 30
+ALIEN_MOVE_TIMER_INIT: equ 10
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 2
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
@@ -279,55 +279,22 @@ noUpdateSpeed:
     ld b, 7     ; the number of rotations to create
     ld hl, AlienGraphic_8x8_1_PixelMov
     ld ix, AlienGraphic_8x8_1_PixelMov+16   ; this is the next sprite we're rotating into
-alienInit_1_OuterLoop:
-    push bc
-        ld b, 8 ; the number of lines we want to rotate (ie the height of the sprite)
-alienInit_1_InnerLoop:  
-        ld a, (hl)
-        ld (ix+0),a
-        inc hl
-        ld a, (hl)
-        inc hl
-        ld (ix+1),a
-        ld d, (ix+0)
-        ld e, (ix+1)
-        srl d   ; Shift D right, bit 0 goes to Carry
-        rr e    ; Rotate E right, including Carry from D, so we have a 16bit shift :)
-        ld (ix+0),d
-        ld (ix+1),e
-        inc ix
-        inc ix
-        djnz alienInit_1_InnerLoop      
-    pop bc
-    djnz alienInit_1_OuterLoop
+    call alienInit_1_OuterLoop
 
-
-
-    ;; initialise the alien sprite rotations
     ld b, 7     ; the number of rotations to create
     ld hl, AlienGraphic_8x8_2_PixelMov
     ld ix, AlienGraphic_8x8_2_PixelMov+16   ; this is the next sprite we're rotating into
-alienInit_2_OuterLoop:
-    push bc
-        ld b, 8 ; the number of lines we want to rotate (ie the height of the sprite)
-alienInit_2_InnerLoop:  
-        ld a, (hl)
-        ld (ix+0),a
-        inc hl
-        ld a, (hl)
-        inc hl
-        ld (ix+1),a
-        ld d, (ix+0)
-        ld e, (ix+1)
-        srl d   ; Shift D right, bit 0 goes to Carry
-        rr e    ; Rotate E right, including Carry from D, so we have a 16bit shift :)
-        ld (ix+0),d
-        ld (ix+1),e
-        inc ix
-        inc ix
-        djnz alienInit_2_InnerLoop      
-    pop bc
-    djnz alienInit_2_OuterLoop
+    call alienInit_1_OuterLoop
+
+    ld b, 7     ; the number of rotations to create
+    ld hl, AlienGraphic_8x8_3
+    ld ix, AlienGraphic_8x8_3+16   ; this is the next sprite we're rotating into
+    call alienInit_1_OuterLoop
+
+    ld b, 7     ; the number of rotations to create
+    ld hl, AlienGraphic_8x8_4
+    ld ix, AlienGraphic_8x8_4+16   ; this is the next sprite we're rotating into
+    call alienInit_1_OuterLoop
 
     ;; setup the aliens after a restart
     ld de, AlienLocation
@@ -408,13 +375,13 @@ MainGAME_loop:
 ;    ld hl, score3Bytes
 ;    ld de, $4000
 ;    call SHOW_SCORE
-    ;ld  a,3                ; Set color (indicates processing start)
-    ;out ($FE), A           ; Port $FE (254) controls the border
+    ;ld  a,2                ; Set color (indicates processing start)
+   ;out ($FE), A           ; Port $FE (254) controls the border
     
     call ScanTheKeyBoard    ; main program code
     
    ; ld a, 0                ; Set color to BLACK (indicates processing end)
-   ; out ($FE), A
+    ;out ($FE), A
                             ; Any remaining space in the border is "idle" time
     ld a, (rocketHitButNotLevelUp)
     cp 1
@@ -963,21 +930,21 @@ skipDrawThisAlien:
 ;;;;;;;;;
 ;; CODE TO CHOSE ALTERNATEING ALIENS COMMENTED OUT FOR NOW TIL PIXEL SHIFT WORKS
         ; draw alternating rows with different alien sprite
-       ; ld a, (rowEvenOddToggle)
-       ; inc a 
-       ; ld (rowEvenOddToggle),a
-       ; bit 0, a 
-       ; jp nz, subtractAlienSpriteDE 
-       ; ld hl, -16
-       ; add hl, de
-       ; push hl 
-       ; pop de
+        ld a, (rowEvenOddToggle)
+        inc a 
+        ld (rowEvenOddToggle),a
+        bit 0, a 
+        jp nz, subtractAlienSpriteDE 
+        ld hl, -128
+        add hl, de
+        push hl 
+        pop de
         jp nextLoopDrawAlienRow
 subtractAlienSpriteDE:
-        ;ld hl, 16
-        ;add hl, de      
-        ;push hl 
-        ;pop de
+        ld hl, 128
+        add hl, de      
+        push hl 
+        pop de
 nextLoopDrawAlienRow:
     pop bc
     djnz AlienDrawLoop_Rows
@@ -1748,27 +1715,47 @@ ret
 DrawHorizontalBar_16by8:   
     ld b, 8 ; number of pixel lines to be draw
 MainLoopHB1_16by8: 
-    push bc
-    ld b, 2 ; this is the number of columns we're drawing,  always 2 characters wide (16bits) 
-    push de
-    push hl ; hl is the screeen address of the first location to draw (top left)
-InnerLoopHB1_16by8:
-        ld a, (de)
-        ld (hl), a
-        inc l       ; this gives use the next character position to the right
-        inc de
-    djnz InnerLoopHB1_16by8
-    pop hl
+   ; hl is the screeen address of the first location to draw (top left)
+    ld a, (de)
+    ld (hl), a
+    inc l       ; this gives use the next character position to the right
+    inc de
+
+    ld a, (de)
+    ld (hl), a
+    inc l       ; this gives use the next character position to the right
+    inc de
+
+    dec l
+    dec l
     call NextScan
-    pop de
-    pop bc
-    inc de
-    inc de
+
     djnz MainLoopHB1_16by8
 ret
 
 
-
+alienInit_1_OuterLoop:
+    push bc
+        ld b, 8 ; the number of lines we want to rotate (ie the height of the sprite)
+alienInit_1_InnerLoop:  
+        ld a, (hl)
+        ld (ix+0),a
+        inc hl
+        ld a, (hl)
+        inc hl
+        ld (ix+1),a
+        ld d, (ix+0)
+        ld e, (ix+1)
+        srl d   ; Shift D right, bit 0 goes to Carry
+        rr e    ; Rotate E right, including Carry from D, so we have a 16bit shift :)
+        ld (ix+0),d
+        ld (ix+1),e
+        inc ix
+        inc ix
+        djnz alienInit_1_InnerLoop      
+    pop bc
+    djnz alienInit_1_OuterLoop
+    ret
 
 DrawVeticalBar:    
     ld b, a    ; number of multiples of 8 blocks to display width
@@ -2618,49 +2605,28 @@ AlienGraphic_8x8_2_PixelMov:
 ; then get the initialization code to rotate it using simple srl instrucitons
     defs 112,0   ;7*16 and preset to zero
 
-
-
-
-
-
-AlienGraphic_8x8_1:   
-    defb %00111100
-    defb %01000010
-    defb %10100101
-    defb %10000001
-    defb %01111110
-    defb %00100100
-    defb %01000010
-    defb %10000001
-
-AlienGraphic_8x8_2:    
-    defb %00111100
-    defb %01000010
-    defb %10100101
-    defb %10000001
-    defb %01111110
-    defb %00100100
-    defb %01000010
-    defb %00100100
-
 AlienGraphic_8x8_3:    
-    defb %00000000
-    defb %00000000
-    defb %01000010
-    defb %00100100
-    defb %00011000
-    defb %00100100
-    defb %01000010
-    defb %00000000
+    defb %00000000,%00000000
+    defb %00000000,%00000000
+    defb %01000010,%00000000
+    defb %00100100,%00000000
+    defb %00011000,%00000000
+    defb %00100100,%00000000
+    defb %01000010,%00000000
+    defb %00000000,%00000000
+
+    defs 112,0   ;7*16 and preset to zero
 AlienGraphic_8x8_4:   
-    defb %00000000
-    defb %00000000
-    defb %11000011
-    defb %01111110
-    defb %00111100
-    defb %01111110
-    defb %11000011
-    defb %00000000
+    defb %00000000,%00000000
+    defb %00000000,%00000000
+    defb %11000011,%00000000
+    defb %01111110,%00000000
+    defb %00111100,%00000000
+    defb %01111110,%00000000
+    defb %11000011,%00000000
+    defb %00000000,%00000000
+
+    defs 112,0   ;7*16 and preset to zero
 
 GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
