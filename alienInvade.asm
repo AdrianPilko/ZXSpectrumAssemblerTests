@@ -275,6 +275,60 @@ noUpdateSpeed:
     ld a, 60
     ld (saucerTimer), a
 
+    ;; initialise the alien sprite rotations
+    ld b, 7     ; the number of rotations to create
+    ld hl, AlienGraphic_8x8_1_PixelMov
+    ld ix, AlienGraphic_8x8_1_PixelMov+16   ; this is the next sprite we're rotating into
+alienInit_1_OuterLoop:
+    push bc
+        ld b, 8 ; the number of lines we want to rotate (ie the height of the sprite)
+alienInit_1_InnerLoop:  
+        ld a, (hl)
+        ld (ix+0),a
+        inc hl
+        ld a, (hl)
+        inc hl
+        ld (ix+1),a
+        ld d, (ix+0)
+        ld e, (ix+1)
+        srl d   ; Shift D right, bit 0 goes to Carry
+        rr e    ; Rotate E right, including Carry from D, so we have a 16bit shift :)
+        ld (ix+0),d
+        ld (ix+1),e
+        inc ix
+        inc ix
+        djnz alienInit_1_InnerLoop      
+    pop bc
+    djnz alienInit_1_OuterLoop
+
+
+
+    ;; initialise the alien sprite rotations
+    ld b, 7     ; the number of rotations to create
+    ld hl, AlienGraphic_8x8_2_PixelMov
+    ld ix, AlienGraphic_8x8_2_PixelMov+16   ; this is the next sprite we're rotating into
+alienInit_2_OuterLoop:
+    push bc
+        ld b, 8 ; the number of lines we want to rotate (ie the height of the sprite)
+alienInit_2_InnerLoop:  
+        ld a, (hl)
+        ld (ix+0),a
+        inc hl
+        ld a, (hl)
+        inc hl
+        ld (ix+1),a
+        ld d, (ix+0)
+        ld e, (ix+1)
+        srl d   ; Shift D right, bit 0 goes to Carry
+        rr e    ; Rotate E right, including Carry from D, so we have a 16bit shift :)
+        ld (ix+0),d
+        ld (ix+1),e
+        inc ix
+        inc ix
+        djnz alienInit_2_InnerLoop      
+    pop bc
+    djnz alienInit_2_OuterLoop
+
     ;; setup the aliens after a restart
     ld de, AlienLocation
     ld hl, AlienLocationInits
@@ -786,13 +840,32 @@ ChooseAliens:
     ld (AlienFrameCounter) , a
     bit 0, a
     jp nz, Alien_1 
+    ;;; COMMENTED OUT PREVIOUS LINE SO IT ALWAYS CHOOSES SAME
 Alien_2: 
-    ld de, AlienGraphic_8x8_2
+    ; this is the new code with rotations
     ; we need the correct shifted sprite from this base
-    
-    ret
+    ld hl, AlienGraphic_8x8_2_PixelMov
+    jr doTheChooseAlienShiftSelect
 Alien_1:
-    ld de, AlienGraphic_8x8_1
+    ld hl, AlienGraphic_8x8_1_PixelMov
+    ; fall through to doTheChooseAlienShiftSelect
+doTheChooseAlienShiftSelect:
+    ld d, 0
+    ld a, (alienBitShiftCount)
+    ;; alienBitShiftCount multiplied by 16 to offset to the correct rotated sprite
+    ; which is left shift by 4
+    or a
+    rl a
+    or a
+    rl a
+    or a
+    rl a
+    or a
+    rl a
+    ld e, a
+    add hl, de
+    ex de, hl
+
     ret
 
 
@@ -878,8 +951,7 @@ notAtBottom:
                     ld h, (iy+1)
                     ;; de preloaded with the correct sprite to draw
                     ;; both per row and shifted by one pixel if required
-                    ld a, 1     ; a is the length in 8bit characters to draw
-                    call DrawHorizontalBar
+                    call DrawHorizontalBar_16by8
                 pop hl
 skipDrawThisAlien:
                 inc iy
@@ -887,23 +959,25 @@ skipDrawThisAlien:
             pop de
         pop bc
         djnz AlienDrawLoop_Cols   
-
+;;;;;;;;;
+;;;;;;;;;
+;; CODE TO CHOSE ALTERNATEING ALIENS COMMENTED OUT FOR NOW TIL PIXEL SHIFT WORKS
         ; draw alternating rows with different alien sprite
-        ld a, (rowEvenOddToggle)
-        inc a 
-        ld (rowEvenOddToggle),a
-        bit 0, a 
-        jp nz, subtractAlienSpriteDE 
-        ld hl, -16
-        add hl, de
-        push hl 
-        pop de
+       ; ld a, (rowEvenOddToggle)
+       ; inc a 
+       ; ld (rowEvenOddToggle),a
+       ; bit 0, a 
+       ; jp nz, subtractAlienSpriteDE 
+       ; ld hl, -16
+       ; add hl, de
+       ; push hl 
+       ; pop de
         jp nextLoopDrawAlienRow
 subtractAlienSpriteDE:
-        ld hl, 16
-        add hl, de      
-        push hl 
-        pop de
+        ;ld hl, 16
+        ;add hl, de      
+        ;push hl 
+        ;pop de
 nextLoopDrawAlienRow:
     pop bc
     djnz AlienDrawLoop_Rows
@@ -918,6 +992,7 @@ push af
     jp nc, flagIncMoveAlienByChar 
     xor a ; zero IncMoveAlienByCharFlag
     ld (IncMoveAlienByCharFlag), a 
+    ld (alienBitShiftCount), a    
     jp skipFlagIncMoveAlienByChar
 flagIncMoveAlienByChar:
     ld a, 1
@@ -987,7 +1062,6 @@ HSdecided:
     ld b, 3               ; We have 3 bytes to check
     ldir ; bit overkill herre only 3 in loop!!
 
-;TODO doesn't work yet
     ld a, 2          ; Open Channel 2
     call 5633
     ld de, MSG_ENTERNAME       ; Address of string
@@ -1669,6 +1743,30 @@ InnerLoopHB1:
     pop de
     djnz MainLoopHB1
 ret
+
+
+DrawHorizontalBar_16by8:   
+    ld b, 8 ; number of pixel lines to be draw
+MainLoopHB1_16by8: 
+    push bc
+    ld b, 2 ; this is the number of columns we're drawing,  always 2 characters wide (16bits) 
+    push de
+    push hl ; hl is the screeen address of the first location to draw (top left)
+InnerLoopHB1_16by8:
+        ld a, (de)
+        ld (hl), a
+        inc l       ; this gives use the next character position to the right
+        inc de
+    djnz InnerLoopHB1_16by8
+    pop hl
+    call NextScan
+    pop de
+    pop bc
+    inc de
+    inc de
+    djnz MainLoopHB1_16by8
+ret
+
 
 
 
@@ -2488,7 +2586,44 @@ GraphicTile2_8x8:    ; a box filled in if using attribute colour
     defb %01111110
     defb %00000000
 
-AlienGraphic_8x8_1:    
+AlienGraphic_8x8_1_PixelMov: 
+    ;defb $ff,$00        ; for test set to $ff,00, first time through init the next sprite is $7f,$80
+    defb %00111100,%00000000
+    defb %01000010,%00000000
+    defb %10100101,%00000000
+    defb %10000001,%00000000
+    defb %01111110,%00000000
+    defb %00100100,%00000000
+    defb %01000010,%00000000
+    defb %10000001,%00000000
+
+; we just have the base graphic, then memory resered with defs to 
+; the full size of every extra rotation from base so 7rotaitons * 16bytes per sprite
+; then get the initialization code to rotate it using simple srl instrucitons
+    defs 112,0   ;7*16 and preset to zero
+
+AlienGraphic_8x8_2_PixelMov: 
+    ;defb $ff,$00        ; for test set to $ff,00, first time through init the next sprite is $7f,$80
+    defb %00111100,%00000000
+    defb %01000010,%00000000
+    defb %10100101,%00000000
+    defb %10000001,%00000000
+    defb %01111110,%00000000
+    defb %00100100,%00000000
+    defb %01000010,%00000000
+    defb %00100100,%00000000
+
+; we just have the base graphic, then memory resered with defs to 
+; the full size of every extra rotation from base so 7rotaitons * 16bytes per sprite
+; then get the initialization code to rotate it using simple srl instrucitons
+    defs 112,0   ;7*16 and preset to zero
+
+
+
+
+
+
+AlienGraphic_8x8_1:   
     defb %00111100
     defb %01000010
     defb %10100101
@@ -2497,6 +2632,7 @@ AlienGraphic_8x8_1:
     defb %00100100
     defb %01000010
     defb %10000001
+
 AlienGraphic_8x8_2:    
     defb %00111100
     defb %01000010
