@@ -264,6 +264,8 @@ noUpdateSpeed:
     ld (movedLeftFlag), a
     ld (alienCheckCount), a
     ld (ScoreChanged), a
+    ld (alienBitShiftCount), a
+    ld (IncMoveAlienByCharFlag), a
     ld a, 1
     ld (musicOnFlag), a
     ld a, 1
@@ -825,6 +827,18 @@ skipDrawThisAlienBLANK:
 
     ret
 
+;;;; 
+;;;; This is the main draw routine for the aliens 
+;;;; only the ones that are valid from AlienValid are draw
+;;;;
+;;;; we want to make the aliens draw one pixel at a time, 
+;;;; we can cheat because we only need one offset, which will cycle
+;;;; 0 to 7 inclusive, for all the aliens since they all move in lock step
+;;;;
+alienBitShiftCount:
+    defb 0
+IncMoveAlienByCharFlag:
+    defb 0
 
 DrawAliensThisTime:
     di
@@ -854,9 +868,10 @@ AlienDrawLoop_Cols:
                 pop bc
                 jp GAME_OVER
 notAtBottom:
-                ld l, (iy+0)
+;;;;;;; THIS IS THE BIT THAT DRAWS A SINGLE ALIEN
+                ld l, (iy+0) ; load the screen position, which is offset by iy -> the alien Number
                 ld h, (iy+1)
-                ld a, 1
+                ld a, 1     ; a is the length in 8bit characters to draw
                 call DrawHorizontalBar
 skipDrawThisAlien:
                 inc iy
@@ -886,6 +901,23 @@ nextLoopDrawAlienRow:
     djnz AlienDrawLoop_Rows
     ld iy, $5c00
     ei
+;;  all aliens now drawn so change the pixel offset
+    ld a, (alienBitShiftCount)
+    ;; we also want to trigger movement at this point by 1 full charactor
+    inc a
+push af
+    cp 8
+    jp nc, flagIncMoveAlienByChar 
+    xor a ; zero IncMoveAlienByCharFlag
+    ld (IncMoveAlienByCharFlag), a 
+    jp skipFlagIncMoveAlienByChar
+flagIncMoveAlienByChar:
+    ld a, 1
+    ld (IncMoveAlienByCharFlag), a
+skipFlagIncMoveAlienByChar:
+pop af
+    and 7                         ; limit to 8
+    ld (alienBitShiftCount), a    
 
     ret
 
@@ -1038,9 +1070,14 @@ nextLoopIfZeroOnLeft:
     xor a
     ret                   ; we didn't find anything
 
+
 UpdateAlienPositions:
-    ;; determine direction aliens are currently moving
-    ; 
+    ;; do we actually want to move by one character? by checking 
+    ;; IncMoveAlienByCharFlag
+    ld a, (IncMoveAlienByCharFlag)
+    cp 1
+    jp nz, skipMoveAliensDown
+    ;; determine direction aliens are currently moving 
     ld a, (AlienDirection)
     bit 0, a              ;AlienDirection inc elsewhere and this checks the resulting toggled bit zero
     jp z, AlienMoves_Left
