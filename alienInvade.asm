@@ -48,7 +48,7 @@ LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
 
-ALIEN_MOVE_TIMER_INIT: equ 10
+ALIEN_MOVE_TIMER_INIT: equ 6
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 2
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
@@ -986,21 +986,21 @@ skipDrawThisAlien:
 
         ; draw alternating rows with different alien sprite
 
- ;       ld a, (rowEvenOddToggle)
-;        inc a 
-;        ld (rowEvenOddToggle),a
-;        bit 0, a 
-;        jp nz, subtractAlienSpriteDE 
-;        ld hl, -256
-;        add hl, de
-;        push hl 
-;        pop de
-;        jp nextLoopDrawAlienRow
+        ld a, (rowEvenOddToggle)
+        inc a 
+        ld (rowEvenOddToggle),a
+        bit 0, a 
+        jp nz, subtractAlienSpriteDE 
+        ld hl, -256
+        add hl, de
+        push hl 
+        pop de
+        jp nextLoopDrawAlienRow
 subtractAlienSpriteDE:
-;        ld hl, 256
-;        add hl, de      
-;        push hl 
-;        pop de
+        ld hl, 256
+        add hl, de      
+        push hl 
+        pop de
 nextLoopDrawAlienRow:
     pop bc
     djnz AlienDrawLoop_Rows
