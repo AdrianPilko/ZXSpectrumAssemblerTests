@@ -634,11 +634,22 @@ DrawAliensTimerExpired:
     call UpdateAlienPositions
     call ChooseAliens
     call DrawAliensThisTime
+    
+    ;; if we're currently going left AlienDirection == 0 then don't check CheckIfAlienDirChangeLeft
+    ;; and conversely going right AlienDirection == 1 then don't CheckIfAlienDirChangeRight 
+    ld a, (AlienDirection)
+    cp 1
+    jp z, skipCheckLeft
     call CheckIfAlienDirChangeLeft
-
     jp nz, alienDirChange
+skipCheckLeft:
+    ld a, (AlienDirection)
+    cp 0
+    jp z, skipCheckRight
+
     call CheckIfAlienDirChangeRight
     jp nz, alienDirChange
+skipCheckRight:
     ;; otherwise just keep going
     jp noDirectionChange
 alienDirChange:
