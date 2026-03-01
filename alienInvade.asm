@@ -383,13 +383,13 @@ MainGAME_loop:
 
 
 
-   ;; ld  a,2                ; Set color (indicates processing start)
-   ;; out ($FE), A           ; Port $FE (254) controls the border
+    ld  a,2                ; Set color (indicates processing start)
+    out ($FE), A           ; Port $FE (254) controls the border
     
     call ScanTheKeyBoard    ; main program code
     
-   ;; ld a, 0                ; Set color to BLACK (indicates processing end)
-   ;; out ($FE), A
+    ld a, 0                ; Set color to BLACK (indicates processing end)
+    out ($FE), A
                             ; Any remaining space in the border is "idle" time
     ld a, (rocketHitButNotLevelUp)
     cp 1
@@ -895,8 +895,7 @@ AlienDrawLoop_ColsBL:
             ld l, (iy+0)
             ld h, (iy+1)
             ld de, GraphicTileBlank_8x8
-            ld a, 1
-            call DrawHorizontalBar
+            call DrawHorizontalBar_8x8
 skipDrawThisAlienBLANK:
             inc iy
             inc iy
@@ -1191,9 +1190,9 @@ AlienPosUpLoop_Rows:
     push bc
     ld l,(iy+0)
     ld h,(iy+1)
-    ld a, 2
+
     ld de, GraphicTileBlank_8x8
-    call DrawHorizontalBar    
+    call DrawHorizontalBar_16by8    
     ld b, NUMBER_ALIEN_IN_ROW
 AlienPosUpLoop_Cols:
         ld l,(iy+0)
@@ -1230,9 +1229,8 @@ AlienPosUpLoop_Cols_L:
     pop bc
     djnz AlienPosUpLoop_Rows_L
     inc l
-    ld a, 2
     ld de, GraphicTileBlank_8x8
-    call DrawHorizontalBar
+    call DrawHorizontalBar_16by8
 
 resetAlienRow:
     ld a, (alienLeftRightCount)
@@ -1372,13 +1370,11 @@ RocketHIT:
     ;; right lets print an explosion then blank it
     push hl
         ld de, Explosion
-        ld  a,1
-        call DrawHorizontalBar    
+        call DrawHorizontalBar_8x8    
         call Delay
     pop hl    
     ld de, GraphicTileBlank_8x8
-    ld  a,1
-    call DrawHorizontalBar
+    call DrawHorizontalBar_8x8
     
     xor a       
     ld (ix+0), a        ; ix still has the locaiton of the AlienValid memory so set it back to zerp
@@ -1760,8 +1756,21 @@ InnerLoopHB1:
     pop bc
     pop de
     djnz MainLoopHB1
-ret
+    ret
 
+
+DrawHorizontalBar_8x8:    
+    ld b, 8 ; number of pixel lines to be drawn
+MainLoopHB1_8by8: 
+        ; hl is the screeen address of the first location to draw (top left)
+        ld a, (de)
+        ld (hl), a
+        inc l       ; this gives use the next character position to the right
+        inc de
+        dec l         ; quicker todo one dec (4 Tstates) to restore l (and thereby hl) than push and pop hl
+        call NextScan
+    djnz MainLoopHB1_16by8
+    ret
 
 DrawHorizontalBar_16by8:   
     ld b, 8 ; number of pixel lines to be drawn
@@ -1779,7 +1788,7 @@ MainLoopHB1_16by8:
     inc l       ; this gives use the next character position to the right
     inc de
 
-    dec l
+    dec l           ; quicker todo two dec to restore l (and thereby hl) than push and pop hl
     dec l
     call NextScan
 
@@ -2682,6 +2691,8 @@ AlienGraphic_8x8_4:
     defs 112,0   ;7*16 and preset to zero
 
 GraphicTileBlank_8x8:    ; a box empty for no attribute colour
+    defb %00000000
+    defb %00000000
     defb %00000000
     defb %00000000
     defb %00000000
