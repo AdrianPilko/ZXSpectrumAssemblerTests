@@ -48,7 +48,7 @@ LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
 
-ALIEN_MOVE_TIMER_INIT: equ 10
+ALIEN_MOVE_TIMER_INIT: equ 5
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 2
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
@@ -85,17 +85,26 @@ TOTAL_NUM_ALIENS: equ 64
 
 MyISR:
     ex af, af'              ; save a and flags to alternate register set
-    exx
-    push ix
-    push iy
+    ld a, (FrameCount) ; this is for syncing with game loop to frame
+                        ; probably only sync once to keep it speedy enough
+    inc a
+    ld (FrameCount),a
+    ex af, af'              ; save a and flags to alternate register set
+    ei
+    reti
+
+
+
+
+    ;exx
+    ;push ix
+    ;push iy
 
         ;ld  a,5                ; Set color (indicates processing start)
         ;out ($FE), A           ; Port $FE (254) controls the border
-        ld hl, FrameCount ; this is for syncing with game loop to frame
-                            ; probably only sync once to keep it speedy enough
-        inc (hl)
+       
 
-        ; EXPERIMENTAL: check if reset key pressed (in case of crash etc) pressing A key
+        ; EXPERIMENTAL: check if A key pressed (in case of crash etc) pressing A key
 ;        ld d, $00
 ;        ld a, $fd 
 ;        in a, ($fe)
@@ -372,16 +381,15 @@ MainGAME_loop:
     ld (rocketHitButNotLevelUp),a
     ld (Main_LevelUpResetFLAG),a 
 
-;    ld hl, score3Bytes
-;    ld de, $4000
-;    call SHOW_SCORE
-    ;ld  a,2                ; Set color (indicates processing start)
-   ;out ($FE), A           ; Port $FE (254) controls the border
+
+
+   ;; ld  a,2                ; Set color (indicates processing start)
+   ;; out ($FE), A           ; Port $FE (254) controls the border
     
     call ScanTheKeyBoard    ; main program code
     
-   ; ld a, 0                ; Set color to BLACK (indicates processing end)
-    ;out ($FE), A
+   ;; ld a, 0                ; Set color to BLACK (indicates processing end)
+   ;; out ($FE), A
                             ; Any remaining space in the border is "idle" time
     ld a, (rocketHitButNotLevelUp)
     cp 1
@@ -521,8 +529,22 @@ saucerHit:
     dec a
     ld b, a
     ld c, SAUCER_Y_POS
+    ld de, Sprite24x8_Explosion
+    call DrawSprite8x24
+    
+
+    ld b, 50 ; duration (delay)
+    call beep
+    ld b, 50 ; duration (delay)
+    call beep
+
+    ld a, (saucerXPos)
+    dec a
+    ld b, a
+    ld c, SAUCER_Y_POS
     ld de, SpriteBlank_24x24
     call DrawSprite8x24
+
 
     xor a
     ld (saucerEnabled), a
@@ -806,35 +828,51 @@ ChooseAliens:
     inc a 
     ld (AlienFrameCounter) , a
     bit 0, a
-    jp nz, Alien_1 
-    ;;; COMMENTED OUT PREVIOUS LINE SO IT ALWAYS CHOOSES SAME
-Alien_2: 
+    jp nz, Alien_2 
+
+Alien_1: 
     ; this is the new code with rotations
     ; we need the correct shifted sprite from this base
-    ld hl, AlienGraphic_8x8_2_PixelMov
-    jr doTheChooseAlienShiftSelect
-Alien_1:
     ld hl, AlienGraphic_8x8_1_PixelMov
-    ; fall through to doTheChooseAlienShiftSelect
-doTheChooseAlienShiftSelect:
+    ld a, (AlienDirection)
+    bit 0, a              ;AlienDirection inc elsewhere and this checks the resulting toggled bit zero
+    jp z, doTheChooseAlienShiftSelectLeft
+    jr doTheChooseAlienShiftSelectRight
+Alien_2:
+    ld hl, AlienGraphic_8x8_2_PixelMov
+    ld a, (AlienDirection)
+    bit 0, a              ;AlienDirection inc elsewhere and this checks the resulting toggled bit zero
+    jp z, doTheChooseAlienShiftSelectLeft
+    ;; fall through to  doTheChooseAlienShiftSelectRight
+doTheChooseAlienShiftSelectRight:
     ld d, 0
     ld a, (alienBitShiftCount)
     ;; alienBitShiftCount multiplied by 16 to offset to the correct rotated sprite
     ; which is left shift by 4
-    or a
+    or a     ; clear the carry flag otherwise it will shift a 1 into the register
     rl a
-    or a
     rl a
-    or a
     rl a
-    or a
     rl a
     ld e, a
     add hl, de
     ex de, hl
-
     ret
 
+doTheChooseAlienShiftSelectLeft:
+    ld d, 0
+    ld a, (alienBitShiftCount)
+    ;; alienBitShiftCount multiplied by 16 to offset to the correct rotated sprite
+    ; which is left shift by 4
+    or a     ; clear the carry flag otherwise it will shift a 1 into the register
+    rr a
+    rr a
+    rr a
+    rr a
+    ld e, a
+    add hl, de
+    ex de, hl
+    ret
 
 
 
@@ -912,8 +950,10 @@ AlienDrawLoop_Cols:
                 pop bc
                 jp GAME_OVER
 notAtBottom:
+;;;;;;;
 ;;;;;;; THIS IS THE BIT THAT DRAWS A SINGLE ALIEN
-                push hl
+;;;;;;;
+                push hl   ; hl is trashed by DrawHorizontalBar_16by8
                     ld l, (iy+0) ; load the screen position, which is offset by iy -> the alien Number
                     ld h, (iy+1)
                     ;; de preloaded with the correct sprite to draw
@@ -926,22 +966,22 @@ skipDrawThisAlien:
             pop de
         pop bc
         djnz AlienDrawLoop_Cols   
-;;;;;;;;;
-;;;;;;;;;
-;; CODE TO CHOSE ALTERNATEING ALIENS COMMENTED OUT FOR NOW TIL PIXEL SHIFT WORKS
+
         ; draw alternating rows with different alien sprite
+
+;;;;;; BUG - this doesn't work properly after putting in the pixel shift code
         ld a, (rowEvenOddToggle)
         inc a 
         ld (rowEvenOddToggle),a
         bit 0, a 
         jp nz, subtractAlienSpriteDE 
-        ld hl, -128
+        ld hl, -256
         add hl, de
         push hl 
         pop de
         jp nextLoopDrawAlienRow
 subtractAlienSpriteDE:
-        ld hl, 128
+        ld hl, 256
         add hl, de      
         push hl 
         pop de
@@ -959,11 +999,12 @@ push af
     jp nc, flagIncMoveAlienByChar 
     xor a ; zero IncMoveAlienByCharFlag
     ld (IncMoveAlienByCharFlag), a 
-    ld (alienBitShiftCount), a    
     jp skipFlagIncMoveAlienByChar
 flagIncMoveAlienByChar:
     ld a, 1
     ld (IncMoveAlienByCharFlag), a
+    xor a ; zero alienBitShiftCount
+    ld (alienBitShiftCount), a    
 skipFlagIncMoveAlienByChar:
 pop af
     and 7                         ; limit to 8
@@ -1083,12 +1124,19 @@ checkLeftColLoop_R:
     cp 0
     jp z, nextLoopIfZeroOnRight
     cp %00011000  ; the shot sprite data
+    ;jp z, nextLoopIfZeroOnRight
+    ;cp %00100000
+    ;jp z, nextLoopIfZeroOnRight
+    or %10000000
     jp z, nextLoopIfZeroOnRight
-    cp %00100000
-    jp z, nextLoopIfZeroOnRight
+
+    xor a
+    ld (alienBitShiftCount), a
+   
     ;; so now it wasn't a shot or anything else so must be an alien
     ;; we set the zero flag to tell caller we found something
     or %00000001
+
     ret                   ; we found an alien
 nextLoopIfZeroOnRight:
     call NextScan
@@ -1104,11 +1152,14 @@ CheckIfAlienDirChangeLeft:
     ld hl, $4041   ; start address of column rto check
 checkLeftColLoop_L:
     ld a, (hl)
-    ;;ld (hl), %010101010
     cp 0
     jp z, nextLoopIfZeroOnLeft
     cp %00011000  ; the shot sprite data
     jp z, nextLoopIfZeroOnLeft
+
+    xor a
+    ld (alienBitShiftCount), a
+
     ;; so now it wasn't a shot or anything else so must be an alien
     ;; we set the zero flag to tell caller we found something
     or %00000001
@@ -1713,9 +1764,11 @@ ret
 
 
 DrawHorizontalBar_16by8:   
-    ld b, 8 ; number of pixel lines to be draw
+    ld b, 8 ; number of pixel lines to be drawn
 MainLoopHB1_16by8: 
    ; hl is the screeen address of the first location to draw (top left)
+
+   ;; these two blocks are the same because I loop unrolled
     ld a, (de)
     ld (hl), a
     inc l       ; this gives use the next character position to the right
@@ -2870,7 +2923,7 @@ defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%0000
 defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000
 defb %00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000,%00000000
 
-FlyingSaucer:
+FlyingSaucer:   ; this has annimation pre encoded but no pixel shift yet
 
 defb %00000000,%00000001,%00011111,%01111000,%01111000,%00011111,%00000001,%00000000
 defb %00000000,%11111111,%11111111,%11100011,%11100011,%11111111,%11111111,%00000000
@@ -2887,6 +2940,13 @@ defb %00000000,%10000000,%11111000,%11101110,%11101110,%11111000,%10000000,%0000
 defb %00000000,%00000001,%00011111,%01110111,%01110111,%00011111,%00000001,%00000000
 defb %00000000,%11111111,%11111111,%00011100,%00011100,%11111111,%11111111,%00000000
 defb %00000000,%10000000,%11111000,%01111110,%01111110,%11111000,%10000000,%00000000
+
+
+Sprite24x8_Explosion:
+defb %00000010,%00000001,%00010000,%01010000,%00001000,%00100010,%00000001,%00100000
+defb %00000000,%10001001,%00100101,%11100011,%11000000,%11100110,%10011001,%00000000
+defb %00100000,%10000000,%11001010,%10001000,%10001000,%01011000,%10000000,%00001000
+
 
 bigAlienSprite_inverse:
 defb %00000011,%00000100,%00001000,%00001000,%00001000,%00001000,%00001110,%00000001
