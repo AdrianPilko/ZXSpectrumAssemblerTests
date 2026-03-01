@@ -48,7 +48,7 @@ LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
 
-ALIEN_MOVE_TIMER_INIT: equ 5
+ALIEN_MOVE_TIMER_INIT: equ 10
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 2
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
@@ -1369,7 +1369,7 @@ RocketHIT:
 
     ;; right lets print an explosion then blank it
     push hl
-        ld de, Explosion
+        ld de, Explosion_8x8
         call DrawHorizontalBar_8x8    
         call Delay
     pop hl    
@@ -1765,11 +1765,9 @@ MainLoopHB1_8by8:
         ; hl is the screeen address of the first location to draw (top left)
         ld a, (de)
         ld (hl), a
-        inc l       ; this gives use the next character position to the right
         inc de
-        dec l         ; quicker todo one dec (4 Tstates) to restore l (and thereby hl) than push and pop hl
         call NextScan
-    djnz MainLoopHB1_16by8
+    djnz MainLoopHB1_8by8
     ret
 
 DrawHorizontalBar_16by8:   
@@ -2708,7 +2706,8 @@ GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
     defb %00000000
 
-Explosion:
+Explosion_8x8:
+
     defb %00100100
     defb %01000010
     defb %10100101
@@ -2716,7 +2715,7 @@ Explosion:
     defb %00000000
     defb %10100101
     defb %01000010
-    defb %00100100 
+    defb %00100100
 
 
 AlienFrameCounter:
