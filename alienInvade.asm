@@ -635,8 +635,8 @@ DrawAliensTimerExpired:
     call ChooseAliens
     call DrawAliensThisTime
     
-    ;; if we're currently going left AlienDirection == 0 then don't check CheckIfAlienDirChangeLeft
-    ;; and conversely going right AlienDirection == 1 then don't CheckIfAlienDirChangeRight 
+    ;; if we're currently going left AlienDirection == 0 then don't check CheckIfAlienDirChangeRight
+    ;; and conversely going right AlienDirection == 1 then don't CheckIfAlienDirChangeLeft 
     ld a, (AlienDirection)
     cp 1
     jp z, skipCheckLeft
