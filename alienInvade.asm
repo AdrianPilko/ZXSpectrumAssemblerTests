@@ -48,7 +48,7 @@ LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
 
-ALIEN_MOVE_TIMER_INIT: equ 6
+ALIEN_MOVE_TIMER_INIT: equ 2
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 2
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
@@ -1197,6 +1197,7 @@ UpdateAlienPositions:
     ld a, (AlienDirection)
     bit 0, a              ;AlienDirection inc elsewhere and this checks the resulting toggled bit zero
     jp z, AlienMoves_Left
+
 AlienMoves_Right:
 
     di
@@ -1205,27 +1206,22 @@ AlienMoves_Right:
     ld b, NUMBER_ALIEN_ROWS  
 AlienPosUpLoop_Rows:
     push bc
-    ld l,(iy+0)
-    ld h,(iy+1)
-
-    ld de, GraphicTileBlank_8x8
-    call DrawHorizontalBar_16by8    
     ld b, NUMBER_ALIEN_IN_ROW
 AlienPosUpLoop_Cols:
         ld l,(iy+0)
         ld h,(iy+1)
-        inc l ;; this avoids a second jump AlienMoves_Left always decs, probably faster
+        inc l ;; this avoids a second jump  always inc, probably faster
         ld (iy+0),l
         inc iy
         inc iy        
         djnz AlienPosUpLoop_Cols
     pop bc
     djnz AlienPosUpLoop_Rows
-    call resetAlienRow
+    call moveAliensDown
     
     ld iy, $5c00
     ei
-    ret    
+    ret
 
 AlienMoves_Left:
     di
@@ -1234,28 +1230,29 @@ AlienMoves_Left:
     ld b, NUMBER_ALIEN_ROWS  
 AlienPosUpLoop_Rows_L:
     push bc
-        ld b, NUMBER_ALIEN_IN_ROW
+    ld b, NUMBER_ALIEN_IN_ROW
 AlienPosUpLoop_Cols_L:
         ld l,(iy+0)
         ld h,(iy+1)
-        dec l ;; this avoids a second jump AlienMoves_Left always decs, probably faster
+        dec l ;; this avoids a second jump always decs, probably faster
         ld (iy+0),l
         inc iy
         inc iy        
         djnz AlienPosUpLoop_Cols_L
     pop bc
     djnz AlienPosUpLoop_Rows_L
-    inc l
-    ld de, GraphicTileBlank_8x8
-    call DrawHorizontalBar_16by8
 
-resetAlienRow:
+
+moveAliensDown:
     ld a, (alienLeftRightCount)
     cp NUMBER_OF_LEFT_RIGHTS_ALIENS
     ret nz
 ;; move them all down by one row
     xor a
     ld (alienLeftRightCount),a 
+
+    ;; if we're moving them doen then blank the current positions
+    call DrawAliensThisTimeBLANK
 
     di
 
