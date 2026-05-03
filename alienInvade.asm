@@ -1329,6 +1329,7 @@ CheckColisAlienLoop_Cols:
 checkLCollision:
         ld a, l
         cp e
+        
         call z, RocketHIT
     
         ld a, (rocketHitButNotLevelUp)
@@ -1387,8 +1388,8 @@ RocketHIT:
         call DrawHorizontalBar_8x8    
         call Delay
     pop hl    
-    ld de, GraphicTileBlank_8x8
-    call DrawHorizontalBar_8x8
+    ld de, GraphicTileBlank_16x8
+    call DrawHorizontalBar_16by8
     
     xor a       
     ld (ix+0), a        ; ix still has the locaiton of the AlienValid memory so set it back to zerp
@@ -2705,6 +2706,25 @@ AlienGraphic_8x8_4:
     defb %00000000,%00000000
 
     defs 112,0   ;7*16 and preset to zero
+
+ ; a box empty for no attribute colour uses the space for 8x8 after
+GraphicTileBlank_16x8:   
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
+    defb %00000000
 
 GraphicTileBlank_8x8:    ; a box empty for no attribute colour
     defb %00000000
