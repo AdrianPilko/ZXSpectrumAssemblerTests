@@ -684,11 +684,41 @@ isShotInFlight:
     cp 1
     jp z, skipAlienFireAsInProgress
 
-    ;; setup the alien shot
+    ;; set the in flight flag for the alien shot
     ld a, 1
     ld (alienShotInFlightFlag), a 
 
+findRandomAlienToShoot:
+    ;; we want to chose one alien to should shoot, could just cycle a count
+    ;; 0 to 7 or use random number 0 to 63 from ROM, but each alien location is
+    ;; 2 bytes so need to multiply the result by 2
+    call randomNumber
+    ; random number is stored in a
+    ; next and with 64, then multiply by 2 by left shifting
+    and %00111111   ; and with 63 to keep the lower 6 bits as we only have 64 aliens max
+    ld d, a   ; store a temp in d
+
+    ld c, a
+    ld b, 0
+
+    ;; need to check alienValid for this alien if not the repeat random
+    ;; number generation
+
+    ld ix, AlienValid
+    add ix, bc
+    ld a, (ix+0)
+    ; check if alien valid
+    cp 1
+    jp nz, findRandomAlienToShoot
+    ld a, d
+
+    sla a ; shift left by one bit multiplys by 2
+    ld c, a
+    ld b, 0
+
     ld ix, AlienLocation
+    add ix, bc
+
     ld l, (ix+0)
     ld h, (ix+1)
     ld (alienShotAddress), hl    ; HL is now the correct screen address
@@ -1669,6 +1699,19 @@ DrawSprite8x24:   ; 1 by 3 character size sprite
     call DrawHorizontalSprite_3wide
 ret
 
+; use a simple lookup in first 8K of rom to generate a simple random number
+; result stored in a
+randomNumber:
+    ld hl,(seed)
+    ld a, h
+    and 31
+    ld h, a
+    ld a, (hl)
+    inc hl
+    ld (seed), hl
+    ret
+seed:
+    defw 0
 
 
 
@@ -2789,7 +2832,7 @@ ScoreChanged
 AlienLocation:  ; we use the iy register to index through the possible aliens locaitons form here 
 ;;; these are initialised from AlienLocationInits on game restart.
 ;; there's 128 because 64 aliens but 2 bytes per location which is a screen memory address
-    defs 256, 0
+    defs 128, 0
 
 AlienValid: ; define 64 bytes set to 1, could save memeory with bit compression, but we have a massive 48K!!!
     defs 64, 1
