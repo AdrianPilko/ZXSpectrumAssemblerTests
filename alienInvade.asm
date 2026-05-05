@@ -335,12 +335,96 @@ noUpdateSpeed:
     LD BC, 64     
     LDIR             ; Rapid block copy
  
+
+
+
+
+
     LD HL, 22528+544     ; Start of Attribute Memory
-    LD (HL), 5      
+    LD (HL), 2    
     LD DE, 22529+544     ; Point to next byte
     LD BC, 96      
     LDIR             ; Rapid block copy
-    
+
+
+
+        ld hl, 22528+548    ; Starting attribute address
+        ld b, 3         ; 4 rows high
+shield_att_row_loop1:
+        push hl         ; Save start of current row
+        ld c, 3         ; 4 columns wide
+        ld a, 5        ; Cyan Paper (5*8), Black Ink (0)
+shield_att_col_loop1:
+        ld (hl), a      ; Set attribute
+        inc hl          ; Move to next column
+        dec c
+        jr nz, shield_att_col_loop1
+        pop hl          ; Restore start of row
+        ld de, 32       ; Move down one row (32 bytes)
+        add hl, de
+        dec b
+        jr nz, shield_att_row_loop1
+
+
+        ld hl, 22528+555    ; Starting attribute address
+        ld b, 3         ; 4 rows high
+shield_att_row_loop2:
+        push hl         ; Save start of current row
+        ld c, 3         ; 4 columns wide
+        ld a, 5        ; Cyan Paper (5*8), Black Ink (0)
+shield_att_col_loop2:
+        ld (hl), a      ; Set attribute
+        inc hl          ; Move to next column
+        dec c
+        jr nz, shield_att_col_loop2
+        pop hl          ; Restore start of row
+        ld de, 32       ; Move down one row (32 bytes)
+        add hl, de
+        dec b
+        jr nz, shield_att_row_loop2
+
+
+
+        ld hl, 22528+562    ; Starting attribute address
+        ld b, 3         ; 4 rows high
+shield_att_row_loop3:
+        push hl         ; Save start of current row
+        ld c, 3         ; 4 columns wide
+        ld a, 5        ; Cyan Paper (5*8), Black Ink (0)
+shield_att_col_loop3:
+        ld (hl), a      ; Set attribute
+        inc hl          ; Move to next column
+        dec c
+        jr nz, shield_att_col_loop3
+        pop hl          ; Restore start of row
+        ld de, 32       ; Move down one row (32 bytes)
+        add hl, de
+        dec b
+        jr nz, shield_att_row_loop3
+
+
+        ld hl, 22528+569    ; Starting attribute address
+        ld b, 3         ; 4 rows high
+shield_att_row_loop4:
+        push hl         ; Save start of current row
+        ld c, 3         ; 4 columns wide
+        ld a, 5        ; Cyan Paper (5*8), Black Ink (0)
+shield_att_col_loop4:
+        ld (hl), a      ; Set attribute
+        inc hl          ; Move to next column
+        dec c
+        jr nz, shield_att_col_loop4
+        pop hl          ; Restore start of row
+        ld de, 32       ; Move down one row (32 bytes)
+        add hl, de
+        dec b
+        jr nz, shield_att_row_loop4
+
+
+
+
+
+
     LD HL, 22528+640     ; Start of Attribute Memory
     LD (HL), 4     
     LD DE, 22529+640     ; Point to next byte
