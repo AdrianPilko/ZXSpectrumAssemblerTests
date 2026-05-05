@@ -747,7 +747,36 @@ checkShotHitPlayerLower:
     inc l   ; check next
     cp l
     jp z, GAME_OVER
-    ;;; NEVER GETS HERE
+
+    ;; check that the shields not hit
+    ld hl, (alienShotAddress)  
+
+    ; Check is alien shot is on a shield
+    ld a, h       ; Get high byte (010TTSSS)
+    rra           ; Shift right 3 times to move TT bits
+    rra
+    rra
+    and 3         ; Keep only the TT bits (0-2)
+    or 88         ; Base of attributes is 22528 ($5800), which is 88 * 256
+    ld h, a       ; New high byte: 010110TT
+        
+    ld a,(hl)       ; Get the attribute byte
+    and 7           ; Mask only the INK color bits (00000111)
+    cp 5            ; Is it blue?
+    jr z, is_blue   ; Jump if it is blue
+    ; not blue 
+    jp skipCheckAlienHitPlayer
+
+is_blue:
+    ; we've hit a shield so change the colour attribute around that area
+    ld (hl), 0
+
+    ; stop the shot
+    xor a
+    ld (alienShotInFlightFlag),a
+
+        
+
 skipCheckAlienHitPlayer:
     ld hl, (alienShotAddress)  
 
@@ -1141,22 +1170,45 @@ MSG_ENTERNAME_END: EQU $
 
 drawShields:
     di
+    ld a, 4
+    ld (shieldPos1_x),a
     ld de, Shield_24x16
-    ld b,4
-    ld c,140
+    ld b, a
+    ld a, 140
+    ld (shieldPos1_y),a
+    ld c,a
     call DrawSprite24x24
+
+    ld a, 11
+    ld (shieldPos2_x),a
     ld de, Shield_24x16
-    ld b,11
-    ld c,140
+    ld b, a
+    ld a, 140
+    ld (shieldPos2_y),a
+    ld c,a
     call DrawSprite24x24
+
+
+
+    ld a, 18
+    ld (shieldPos3_x),a
     ld de, Shield_24x16
-    ld b,18
-    ld c,140
+    ld b, a
+    ld a, 140
+    ld (shieldPos3_y),a
+    ld c,a
     call DrawSprite24x24
+
+
+    ld a, 25
+    ld (shieldPos4_x),a
     ld de, Shield_24x16
-    ld b,25
-    ld c,140
+    ld b, a
+    ld a, 140
+    ld (shieldPos4_y),a
+    ld c,a
     call DrawSprite24x24
+
     ei
     ret 
 
@@ -2828,6 +2880,24 @@ alienCheckCount
 ScoreChanged
     defb 0
     defb 0
+
+shieldPos1_x
+    defb 0
+shieldPos1_y
+    defb 0
+shieldPos2_x
+    defb 0
+shieldPos2_y
+    defb 0
+shieldPos3_x
+    defb 0
+shieldPos3_y
+    defb 0
+shieldPos4_x
+    defb 0
+shieldPos4_y    
+    defb 0
+
 
 AlienLocation:  ; we use the iy register to index through the possible aliens locaitons form here 
 ;;; these are initialised from AlienLocationInits on game restart.
