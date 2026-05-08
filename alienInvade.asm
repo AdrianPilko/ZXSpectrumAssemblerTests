@@ -1458,6 +1458,9 @@ skipMoveAliensDown:
 EndLoop:
     jp EndLoop
 
+
+;;;; Main routine to check if an alien has been hit. we first check if the alien is valid
+;;;; i.e. it's still there, and not already been hit.
 CheckAliensHit:
     ld a, 0
     ld (ScoreChanged), a
@@ -1484,6 +1487,11 @@ CheckColisAlienLoop_Cols:
         cp 1
         jp nz, skipCheckCollision
         
+        ;; remember each pixel memory location is defined by 010T TSSS LLLC CCCC
+        ;; T = third of the screen
+        ;; S = vertical pixel within the 8 character high block
+        ;; L = character line within the third of the screen
+        ;; C = column
         ld l,(iy+0)
         ld h,(iy+1)
         ld a, d
@@ -1493,9 +1501,14 @@ CheckColisAlienLoop_Cols:
 checkLCollision:
         ld a, l
         cp e
-        
-        call z, RocketHIT
-    
+        jp z, rocketHitCallHandle
+        inc a
+        cp e
+        jp z, rocketHitCallHandle               
+        jp noRocketHitCarryOn
+rocketHitCallHandle
+        call RocketHIT 
+noRocketHitCarryOn
         ld a, (rocketHitButNotLevelUp)
         cp 1
         pop bc
