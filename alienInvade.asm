@@ -48,7 +48,7 @@ LOCATE: equ $0dd9
 NUMBER_ALIEN_IN_ROW: equ 8
 NUMBER_ALIEN_ROWS: equ 8
 
-ALIEN_MOVE_TIMER_INIT: equ 4
+ALIEN_MOVE_TIMER_INIT: equ 5
 NUMBER_OF_LEFT_RIGHTS_ALIENS: equ 2
 SAUCER_TIMER_INIT: equ 128
 SAUCER_Y_POS: equ 8
@@ -240,8 +240,6 @@ Main_LevelUpReset:
     cp 0
     jp z, noUpdateSpeed
     cp 1
-    jp z, noUpdateSpeed
-    cp 2
     jp z, noUpdateSpeed
     ld (AlienTimerInit), a
 
