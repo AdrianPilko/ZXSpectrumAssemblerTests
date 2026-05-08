@@ -467,13 +467,13 @@ MainGAME_loop:
 
 
 
-    ;ld  a,2                ; Set color (indicates processing start)
-    ;out ($FE), A           ; Port $FE (254) controls the border
+   ; ld  a,2                ; Set color (indicates processing start)
+   ; out ($FE), A           ; Port $FE (254) controls the border
     
     call ScanTheKeyBoard    ; main program code
     
-    ;ld a, 0                ; Set color to BLACK (indicates processing end)
-    ;out ($FE), A
+   ; ld a, 0                ; Set color to BLACK (indicates processing end)
+   ; out ($FE), A
                             ; Any remaining space in the border is "idle" time
     ld a, (rocketHitButNotLevelUp)
     cp 1
@@ -591,9 +591,10 @@ DrawSprite:
     ld a, (RocketFiring)     ;     this is the players shot
     cp 1
     jp nz, ActuallyDrawSprite
-
+    ;; we already checked if rocket is in flight
     call CheckAliensHit
 
+    ;; draw rocket in flight up the screen
     ld a, (RocketXPos)
     ld b, a
     ld a, (RocketYPos)
@@ -1458,9 +1459,6 @@ EndLoop:
     jp EndLoop
 
 CheckAliensHit:
-    ld a, (RocketFiring)
-    cp 1                    ;; only check if rocket is in flight
-    jp nz, EndCheckAliensHit
     ld a, 0
     ld (ScoreChanged), a
 
