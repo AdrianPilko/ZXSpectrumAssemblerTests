@@ -16,19 +16,15 @@ pixelRightLoop:
         ld a, (Ypos)
         ld c, a
         call GetScreenPos
-;        ld ix, dot_table
-;        ld b, 8
-;dotLoop:
-;        ld a, (ix+0)
-        ld a, $ff
-        ld (hl), a
-;        inc ix
-;        djnz dotLoop
 
-        ;overwrite what is the previous with blank since we push popped
-        ;ld a, 0
-        ;ld (hl), a
-         
+        ld ix, dot_table
+        ld b, 8    ; 8 by 8 character
+dotLoop:
+        ld a, (ix+0)
+        ld (hl), a
+        call NextScan
+        inc ix
+        djnz dotLoop 
     pop bc
     djnz pixelRightLoop
 
@@ -80,6 +76,7 @@ MoveDown:
     ld a, (Ypos)
     cp 191
     jp z, pixelRightLoop
+    call ClearCurrent
     inc a
     ld (Ypos),a
     jp pixelRightLoop    
@@ -87,6 +84,7 @@ MoveUp:
     ld a, (Ypos)
     cp 0
     jp z, pixelRightLoop
+    call ClearCurrent
     dec a
     ld (Ypos),a
     jp pixelRightLoop    
@@ -95,6 +93,7 @@ MoveLeft:
     ld a, (Xpos)
     cp 0
     jp z, pixelRightLoop
+    call ClearCurrent
     dec a
     ld (Xpos),a
     jp pixelRightLoop    
@@ -102,12 +101,32 @@ MoveRight:
     ld a, (Xpos)
     cp 31
     jp z, pixelRightLoop
+    call ClearCurrent
     inc a
     ld (Xpos),a
     jp pixelRightLoop
 FireRocket:
     jp pixelRightLoop
     ret
+
+ClearCurrent:
+    push af
+        ld a, (Xpos)
+        ld b, a
+        ld a, (Ypos)
+        ld c, a
+        call GetScreenPos
+
+        ld b, 8
+    clearLoop:
+        ld a, 0
+        ld (hl), a
+        call NextScan
+        djnz clearLoop 
+    pop af
+ret
+
+
 ; utility routines
 ; get the previous scan line from current hl screen position and store back in hl
 PreviousScan:
@@ -221,12 +240,12 @@ Ypos:
     defb 0
 ;; this is a single pixel "sprite" so smooth left right movement possible
 dot_table:
-    defb %11000011
     defb %00111100
-    defb %00010000
-    defb %00010000
     defb %00111100
-    defb %11000011
+    defb %00011000
+    defb %11111111
     defb %00111100
+    defb %01000010
+    defb %01000010
     defb %11000011
 end main
