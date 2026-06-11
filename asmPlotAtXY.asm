@@ -132,6 +132,23 @@ FireRocket:
 
 ClearCurrent:
     push af
+
+        ld a, (playerToggle)
+        inc a
+        and 1
+        ld  (playerToggle),a
+
+        cp 1
+        jp z, selectPlayer_2
+
+        ld hl, spritePlayer
+        ld (spritePlayerPtr), hl
+        jr caryyOnWithClear
+selectPlayer_2:
+        ld hl, spritePlayer_1
+        ld (spritePlayerPtr), hl
+caryyOnWithClear:
+
         ld a, (Xpos)
         ld b, a
         ld a, (Ypos)
@@ -217,7 +234,7 @@ DelayLoopDS:
 ret
 
 FillScreenAttributesRed:
-    ld a, 3           
+    ld a, 4           
     out ($fe), a      
 
     ld hl, $5800        
@@ -259,25 +276,26 @@ Xpos:
     defb 0
 Ypos:
     defb 0
-;; this is a single pixel "sprite" so smooth left right movement possible
-spritePlayerPtr
+playerToggle:
+    defb 0
+spritePlayerPtr:
     defw 0
 spritePlayer:
-    defb %00111100
-    defb %00111100
-    defb %00011000
     defb %11111111
     defb %00111100
-    defb %01000010
-    defb %01000010
-    defb %01000000
-
-    defb %00100100
-    defb %00111100
     defb %00011000
-    defb %01111110
-    defb %10111101
-    defb %01000010
-    defb %01000010
-    defb %00000010
+    defb %11111110
+    defb %00111100
+    defb %11000011
+    defb %11000011
+    defb %11000000
+spritePlayer_1:
+    defb %00111100
+    defb %00111100
+    defb %00011001
+    defb %01111111
+    defb %00111100
+    defb %11000011
+    defb %11000011
+    defb %00000011
 end main
