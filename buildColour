@@ -1,0 +1,2 @@
+rm -f  asmColour.tap
+pasmo -1 --tapbas asmColour.asm asmColour.tap

@@ -1,0 +1,2 @@
+rm -f  plotXY.tap
+pasmo -1 --tapbas asmPlotAtXY.asm plotXY.tap

@@ -1,0 +1,2 @@
+rm -f  run.tap
+pasmo -1 --tapbas run.asm run.tap
