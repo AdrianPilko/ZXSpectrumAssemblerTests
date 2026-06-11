@@ -1,6 +1,8 @@
 org $8000
 
 main:
+    ld hl, spritePlayer
+    ld (spritePlayerPtr), hl
     call $0d6b  ; clear screenm rom  
     call FillScreenAttributesRed
     ld hl, scr_addr_table
@@ -11,13 +13,14 @@ main:
 
 pixelRightLoop:
     push bc
+        ld hl, (spritePlayerPtr)
+        push hl
+        pop ix
         ld a, (Xpos)
         ld b, a
         ld a, (Ypos)
         ld c, a
         call GetScreenPos
-
-        ld ix, dot_table
         ld b, 8    ; 8 by 8 character
 dotLoop:
         ld a, (ix+0)
@@ -74,18 +77,36 @@ DoneScanKeys:
     jp pixelRightLoop
 MoveDown:
     ld a, (Ypos)
-    cp 191
+    cp 185
     jp z, pixelRightLoop
-    call ClearCurrent
     inc a
+    cp 185
+    jp z, pixelRightLoop
+    inc a
+    cp 185
+    jp z, pixelRightLoop
+    inc a
+    cp 185
+    jp z, pixelRightLoop
+    inc a
+    call ClearCurrent
     ld (Ypos),a
     jp pixelRightLoop    
 MoveUp:
     ld a, (Ypos)
-    cp 0
+    cp 3
     jp z, pixelRightLoop
-    call ClearCurrent
     dec a
+    cp 3
+    jp z, pixelRightLoop
+    dec a
+    cp 3
+    jp z, pixelRightLoop
+    dec a
+    cp 3
+    jp z, pixelRightLoop
+    dec a
+    call ClearCurrent
     ld (Ypos),a
     jp pixelRightLoop    
 
@@ -239,7 +260,9 @@ Xpos:
 Ypos:
     defb 0
 ;; this is a single pixel "sprite" so smooth left right movement possible
-dot_table:
+spritePlayerPtr
+    defw 0
+spritePlayer:
     defb %00111100
     defb %00111100
     defb %00011000
@@ -247,5 +270,14 @@ dot_table:
     defb %00111100
     defb %01000010
     defb %01000010
-    defb %11000011
+    defb %01000000
+
+    defb %00100100
+    defb %00111100
+    defb %00011000
+    defb %01111110
+    defb %10111101
+    defb %01000010
+    defb %01000010
+    defb %00000010
 end main
