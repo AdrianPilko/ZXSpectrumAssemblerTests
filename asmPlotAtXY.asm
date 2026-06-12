@@ -1,22 +1,82 @@
 org $8000
 
-main:
+NUMBER_WIDE equ  2
+
+    defs $190
+
+    di                  ; Disable interrupts during setup
+    
+    ; 1. Create the Vector Table at $8000
+    ld HL, $8000        ; Table starts at $8000
+    ld a, $81        ; Fill with $81
+    ld de, $8001
+    ld (hl), a
+    ld bc, $0101-1         
+    ldir                ; fill
+
+    dec a
+    ld i, a
+    ; 2. Place the Interrupt Service Routine (ISR) at $8181
+    ld a, $C3           ; Opcode for 'JP'
+    ld ($8181), a
+    ld hl, MyISR        ; Address of our counter routine
+    ld ($8182), hl
+
+    im 2                ; Enter Interrupt Mode 2
+    ei                  ; re enable interrupts
+    jp start
+
+
+MyISR:
+;    ex af, af'              ; save a and flags to alternate register set
+;    ld a, (FrameCount) ; this is for syncing with game loop to frame
+;                        ; probably only sync once to keep it speedy enough
+;    inc a
+;    ld (FrameCount),a
+;    ex af, af'              ; save a and flags to alternate register set
+    ei
+    reti
+
+
+   
+
+
+WaitFrame:
+    halt                ; Wait for the next interrupt
+    ret
+
+start:
+    ld a, 2
+    ld (FrameCount),a
     ld hl, spritePlayer
     ld (spritePlayerPtr), hl
     call $0d6b  ; clear screenm rom  
     call FillScreenAttributesRed
     ld hl, scr_addr_table
-    ld b, 31
     ld a, 10
     ld (Xpos),a
     ld (Ypos),a
 
-pixelRightLoop:
+
+mainLoop:
+
+
+    ;ld iy, $5c00  ; backstop in case jumped back without reenabling
+    ei    
+
+    call WaitFrame
+
+    ld b, NUMBER_WIDE
+;; lets make a marking army and draw a number accross
+
+accrossLoop:
+    
     push bc
         ld hl, (spritePlayerPtr)
         push hl
         pop ix
         ld a, (Xpos)
+        add a, b
         ld b, a
         ld a, (Ypos)
         ld c, a
@@ -29,8 +89,10 @@ dotLoop:
         inc ix
         djnz dotLoop 
     pop bc
-    djnz pixelRightLoop
-
+    djnz accrossLoop
+    call DelayTiny
+    call DelayTiny
+    call DelayTiny
 
 
 ScanTheKeyBoard:
@@ -74,60 +136,60 @@ DoneScanKeys:
     jr nz, MoveRight
     bit $04, d
     jp nz, FireRocket
-    jp pixelRightLoop
+    jp mainLoop
 MoveDown:
     ld a, (Ypos)
     cp 185
-    jp z, pixelRightLoop
+    jp z, mainLoop
     inc a
     cp 185
-    jp z, pixelRightLoop
+    jp z, mainLoop
     inc a
     cp 185
-    jp z, pixelRightLoop
+    jp z, mainLoop
     inc a
     cp 185
-    jp z, pixelRightLoop
+    jp z, mainLoop
     inc a
     call ClearCurrent
     ld (Ypos),a
-    jp pixelRightLoop    
+    jp mainLoop    
 MoveUp:
     ld a, (Ypos)
     cp 3
-    jp z, pixelRightLoop
+    jp z, mainLoop
     dec a
     cp 3
-    jp z, pixelRightLoop
+    jp z, mainLoop
     dec a
     cp 3
-    jp z, pixelRightLoop
+    jp z, mainLoop
     dec a
     cp 3
-    jp z, pixelRightLoop
+    jp z, mainLoop
     dec a
     call ClearCurrent
     ld (Ypos),a
-    jp pixelRightLoop    
+    jp mainLoop    
 
 MoveLeft:
     ld a, (Xpos)
     cp 0
-    jp z, pixelRightLoop
+    jp z, mainLoop
     call ClearCurrent
     dec a
     ld (Xpos),a
-    jp pixelRightLoop    
+    jp mainLoop    
 MoveRight:
     ld a, (Xpos)
-    cp 31
-    jp z, pixelRightLoop
+    cp 31-NUMBER_WIDE
+    jp z, mainLoop
     call ClearCurrent
     inc a
     ld (Xpos),a
-    jp pixelRightLoop
+    jp  mainLoop
 FireRocket:
-    jp pixelRightLoop
+    jp mainLoop
     ret
 
 ClearCurrent:
@@ -149,7 +211,11 @@ selectPlayer_2:
         ld (spritePlayerPtr), hl
 caryyOnWithClear:
 
+    ld b, NUMBER_WIDE
+clearLoopAcross:
+        push bc
         ld a, (Xpos)
+        add a, b
         ld b, a
         ld a, (Ypos)
         ld c, a
@@ -161,6 +227,8 @@ caryyOnWithClear:
         ld (hl), a
         call NextScan
         djnz clearLoop 
+    pop bc
+    djnz clearLoopAcross
     pop af
 ret
 
@@ -281,21 +349,25 @@ playerToggle:
 spritePlayerPtr:
     defw 0
 spritePlayer:
-    defb %11111111
+    defb %00000000
+    defb %00100100
     defb %00111100
-    defb %00011000
-    defb %11111110
+    defb %01100110
     defb %00111100
-    defb %11000011
-    defb %11000011
-    defb %11000000
+    defb %01000010
+    defb %01000010
+    defb %00000000
 spritePlayer_1:
+    defb %00000000
+    defb %00100100
     defb %00111100
-    defb %00111100
-    defb %00011001
-    defb %01111111
-    defb %00111100
-    defb %11000011
-    defb %11000011
-    defb %00000011
-end main
+    defb %01111110
+    defb %00100100
+    defb %01000010
+    defb %01100110
+    defb %00000000
+
+
+FrameCount: 
+    defw 0 
+end start
